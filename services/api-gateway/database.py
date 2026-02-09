@@ -12,7 +12,7 @@ from fastapi import Depends
 
 async_engine = create_async_engine(
     settings.SQLALCHEMY_DATABASE_URI,
-    echo=settings.SQLALCHEMY_ECHO,
+    echo=str(settings.SQLALCHEMY_ECHO).lower() in ("1", "true", "yes", "on"),
     pool_pre_ping=True,
 )
 
