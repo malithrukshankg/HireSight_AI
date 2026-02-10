@@ -4,14 +4,14 @@ import os
 from alembic import context
 from sqlalchemy.ext.asyncio import create_async_engine
 
-# ✅ Import Base + models so Alembic can "see" metadata for autogenerate
+#  Import Base + models so Alembic can "see" metadata for autogenerate
 from database import Base
 from models import *  # or explicitly import your model modules (recommended later)
 
 # Alembic Config object
 config = context.config
 
-# ✅ Read DB URL from Docker env and override alembic.ini placeholder
+# Read DB URL from Docker env and override alembic.ini placeholder
 db_url = os.getenv("DATABASE_URL")
 if not db_url:
     raise RuntimeError("DATABASE_URL is not set. Check docker-compose environment.")
@@ -21,7 +21,7 @@ config.set_main_option("sqlalchemy.url", db_url)
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-# ✅ Tell Alembic where metadata is
+#  Tell Alembic where metadata is
 target_metadata = Base.metadata
 
 
@@ -48,7 +48,7 @@ def run_migrations_online() -> None:
     async def run_async_migrations():
         async with connectable.connect() as connection:
 
-            # ✅ run_sync passes a sync Connection into this function
+            #  run_sync passes a sync Connection into this function
             def do_run_migrations(sync_conn):
                 context.configure(
                     connection=sync_conn,
