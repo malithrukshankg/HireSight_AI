@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-
+from api.routers.userRoute import userRouter
 app = FastAPI(title="HireSight API Gateway", version="0.1.0")
 
 
@@ -14,4 +14,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.include_router(userRouter)
 
