@@ -37,6 +37,9 @@ services:
     environment:
       DATABASE_URL: postgresql+psycopg://hiresight:hiresight@postgres:5432/hiresight
       REDIS_URL: redis://redis:6379/0
+      AUTH0_DOMAIN: dev-wt0zci4ynfbqzxos.us.auth0.com
+      AUTH0_AUDIENCE: https://api.hiresight.local
+      AUTH0_ISSUER: https://dev-wt0zci4ynfbqzxos.us.auth0.com/
     volumes:
       - ../services/api-gateway:/app
     command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
