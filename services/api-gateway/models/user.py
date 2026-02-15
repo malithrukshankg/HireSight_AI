@@ -1,12 +1,18 @@
 from sqlalchemy import String, Boolean, CheckConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 from database import Base
+from sqlalchemy.dialects.postgresql import UUID
+import uuid
 
 
 class User(Base):
     __tablename__ = "users"
 
-    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        default=uuid.uuid4
+    )
 
     organization_id: Mapped[str]
 
