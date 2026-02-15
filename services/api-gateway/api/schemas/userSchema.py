@@ -11,5 +11,5 @@ class userCreate(BaseModel):
     id: int
     name: Optional[str] = ""
     email: str
-    password: Optional[str] =""
+    auth0_sub: Optional[str] =""
     role:roleTypes
