@@ -25,7 +25,9 @@ class User(Base):
         String(225), unique=True, index=True, nullable=False
     )
 
-    password_hash: Mapped[str] = mapped_column(String(225), nullable=False)
+    auth0_sub: Mapped[str] = mapped_column(
+        String(255), unique=True, index=True, nullable=False
+    )
 
     role: Mapped[str] = mapped_column(
         String(20),
