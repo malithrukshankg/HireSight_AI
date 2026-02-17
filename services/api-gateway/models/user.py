@@ -1,8 +1,14 @@
-from sqlalchemy import String, Boolean, CheckConstraint
-from sqlalchemy.orm import Mapped, mapped_column
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+from sqlalchemy import String, CheckConstraint, ForeignKey
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 from database import Base
 from sqlalchemy.dialects.postgresql import UUID
 import uuid
+
+if TYPE_CHECKING:
+    from .recruiter_organization import RecruiterOrganization
 
 
 class User(Base):
@@ -14,7 +20,6 @@ class User(Base):
         default=uuid.uuid4
     )
 
-    organization_id: Mapped[str]
 
     email: Mapped[str] = mapped_column(
         String(225), unique=True, index=True, nullable=False
@@ -31,4 +36,12 @@ class User(Base):
         CheckConstraint(
             "role IN ('admin','recruiter','candidate')", name="ck_users_role"
         ),
+    )
+
+    # Relationships (1 User -> many RecruiterOrganization; FK: recruiter_organization.user_id)
+    recruiter_organizations: Mapped[list["RecruiterOrganization"]] = relationship(
+        "RecruiterOrganization",
+        back_populates="user",
+        foreign_keys="RecruiterOrganization.user_id",
+        cascade="all, delete-orphan",
     )
