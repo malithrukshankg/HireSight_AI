@@ -1,0 +1,28 @@
+---
+description: Production FastAPI backend guardrails — safe edits, no infra changes, minimal diffs
+alwaysApply: true
+---
+
+# Production FastAPI Backend Rules
+
+This is a **production FastAPI backend**. Follow these rules on every change.
+
+## File safety
+
+- **Never delete files** without asking the user first.
+- **Never modify** unless explicitly instructed:
+  - `infra/`
+  - Any `docker*` files (e.g. Dockerfile, docker-compose*.yml)
+  - `alembic/`
+  - `.devcontainer/`
+  - `requirements.txt`
+
+## Scope and diff size
+
+- **Only modify files explicitly mentioned** in the user’s prompt (or directly required for that change). Do not refactor or “improve” unrelated code.
+- **Make minimal diffs**: change only what’s needed to fulfill the request; avoid style-only or tangential edits.
+
+## Refactors and uncertainty
+
+- **Explain the plan before refactoring**: briefly describe what you’ll change and why, then implement.
+- **If unsure**, ask the user instead of modifying.
