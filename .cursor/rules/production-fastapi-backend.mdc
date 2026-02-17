@@ -1,28 +1,87 @@
 ---
-description: Production FastAPI backend guardrails — safe edits, no infra changes, minimal diffs
+description: HireSight AI Production FastAPI Guardrails — microservices boundaries, safe edits, minimal diffs
 alwaysApply: true
 ---
 
-# Production FastAPI Backend Rules
+# HireSight AI – Production Backend Guardrails
 
-This is a **production FastAPI backend**. Follow these rules on every change.
+This is the **HireSight AI microservices backend**.
 
-## File safety
+Always follow `ARCHITECTURE_RULES.md`.
 
-- **Never delete files** without asking the user first.
+This is a production-grade system. Architectural integrity is mandatory.
+
+---
+
+## 1. Microservices Architecture Rules
+
+- This is a **microservices architecture**.
+- Services must remain logically independent.
+- Never merge multiple services into one.
+- Never introduce cross-service database joins.
+- Business logic must stay inside its owning service.
+- The API Gateway handles:
+  - Auth0 JWT validation
+  - Request validation
+  - Routing
+  - Middleware (logging, rate limiting)
+- The API Gateway must NOT contain business logic.
+
+---
+
+## 2. File Safety
+
+- **Never delete files or folders** without explicit approval.
 - **Never modify** unless explicitly instructed:
   - `infra/`
-  - Any `docker*` files (e.g. Dockerfile, docker-compose*.yml)
+  - Any `docker*` files (Dockerfile, docker-compose\*.yml)
   - `alembic/`
   - `.devcontainer/`
   - `requirements.txt`
+  - `pyproject.toml`
+- Never rewrite or delete migration files.
+- Never auto-generate migrations unless explicitly requested.
 
-## Scope and diff size
+---
 
-- **Only modify files explicitly mentioned** in the user’s prompt (or directly required for that change). Do not refactor or “improve” unrelated code.
-- **Make minimal diffs**: change only what’s needed to fulfill the request; avoid style-only or tangential edits.
+## 3. Database Integrity Rules
 
-## Refactors and uncertainty
+- All schema changes must align with the ER diagram.
+- Preserve referential integrity.
+- Do not introduce schema shortcuts.
+- Do not change authentication identity rules.
+- For Auth0 users:
+  - Do NOT introduce password-based login.
+  - `auth0_sub` remains the primary identity reference.
 
-- **Explain the plan before refactoring**: briefly describe what you’ll change and why, then implement.
-- **If unsure**, ask the user instead of modifying.
+---
+
+## 4. Scope and Diff Size
+
+- Only modify files explicitly mentioned in the user’s prompt (or strictly required for that change).
+- Do not refactor or “improve” unrelated code.
+- Make minimal diffs.
+- Avoid style-only changes unless requested.
+
+---
+
+## 5. Refactors and Uncertainty
+
+- Explain the plan before refactoring.
+- Describe what will change and why.
+- Then implement step-by-step.
+- If unsure, ask instead of modifying.
+- If a change impacts architecture boundaries, ask for confirmation first.
+
+---
+
+## 6. Safety Priority
+
+When in doubt:
+
+1. Preserve architecture.
+2. Preserve data integrity.
+3. Preserve service boundaries.
+4. Preserve minimal diffs.
+
+Architectural stability is more important than optimization.
