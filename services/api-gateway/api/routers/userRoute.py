@@ -16,7 +16,7 @@ async def create_user(payload: userCreate,db:DBSession,principal: dict = Depends
 
     return await UserController(db).create_user(user)
 
-@userRouter.post("/upsert", response_model=User, status_code=200)
+@userRouter.post("/upsert", response_model=userCreate, status_code=200)
 async def upsert_user(
     db: DBSession,
     principal: dict = Depends(get_current_principal)
