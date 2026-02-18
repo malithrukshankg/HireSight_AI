@@ -19,7 +19,7 @@ export default function Login() {
   }
 
   return (
-    <main className="grid h-screen min-h-0 grid-cols-1 overflow-hidden lg:grid-cols-2">
+    <main className="grid min-h-0 flex-1 grid-cols-1 overflow-hidden lg:grid-cols-2">
       {/* Left panel - Login form */}
       <section className="flex min-h-0 flex-col justify-center overflow-hidden bg-white p-8 lg:p-16">
         <div className="mx-auto w-full max-w-md">
