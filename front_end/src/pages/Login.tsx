@@ -1,18 +1,35 @@
+import { useState } from "react";
 import { useAuth0 } from "@auth0/auth0-react";
-import { Navigate, useSearchParams } from "react-router-dom";
+import { Navigate, useNavigate, useSearchParams } from "react-router-dom";
 
 export default function Login() {
-  const { isAuthenticated, error, loginWithRedirect: login } = useAuth0();
+  const { isAuthenticated, error, loginWithPopup } = useAuth0();
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const returnTo = searchParams.get("returnTo") || "/";
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleAuth = async (
+    options: { appState?: { returnTo: string }; authorizationParams?: { screen_hint?: string; connection?: string } }
+  ) => {
+    setIsLoading(true);
+    try {
+      await loginWithPopup(options);
+      navigate(returnTo, { replace: true });
+    } catch (e) {
+      // User closed popup or auth failed - stay on login page
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const signup = () =>
-    login({ appState: { returnTo }, authorizationParams: { screen_hint: "signup" } });
+    handleAuth({ appState: { returnTo }, authorizationParams: { screen_hint: "signup" } });
 
-  const doLogin = () => login({ appState: { returnTo } });
+  const doLogin = () => handleAuth({ appState: { returnTo } });
 
   const doLoginWithGoogle = () =>
-    login({ appState: { returnTo }, authorizationParams: { connection: "google-oauth2" } });
+    handleAuth({ appState: { returnTo }, authorizationParams: { connection: "google-oauth2" } });
 
   if (isAuthenticated) {
     return <Navigate to={returnTo} replace />;
@@ -36,6 +53,9 @@ export default function Login() {
 
           <h1 className="text-3xl font-bold text-neutral-900">Welcome back</h1>
           <p className="mt-2 text-neutral-500">Please sign in to continue</p>
+          <p className="mt-4 text-sm text-neutral-400">
+            A sign-in window will open. Close it anytime to cancel.
+          </p>
 
           {error && (
             <p className="mt-6 rounded-lg bg-red-50 p-3 text-sm text-red-600">
@@ -47,14 +67,16 @@ export default function Login() {
             <button
               type="button"
               onClick={doLogin}
-              className="w-full rounded-xl bg-neutral-900 py-3 px-5 font-medium text-white transition-colors hover:bg-neutral-800 focus:ring-2 focus:ring-neutral-500 focus:ring-offset-2"
+              disabled={isLoading}
+              className="w-full rounded-xl bg-neutral-900 py-3 px-5 font-medium text-white transition-colors hover:bg-neutral-800 focus:ring-2 focus:ring-neutral-500 focus:ring-offset-2 disabled:opacity-50"
             >
-              Sign in
+              {isLoading ? "Opening..." : "Sign in"}
             </button>
             <button
               type="button"
               onClick={doLoginWithGoogle}
-              className="flex w-full items-center justify-center gap-2 rounded-xl bg-neutral-900 py-3 px-5 font-medium text-white transition-colors hover:bg-neutral-800 focus:ring-2 focus:ring-neutral-500 focus:ring-offset-2"
+              disabled={isLoading}
+              className="flex w-full items-center justify-center gap-2 rounded-xl bg-neutral-900 py-3 px-5 font-medium text-white transition-colors hover:bg-neutral-800 focus:ring-2 focus:ring-neutral-500 focus:ring-offset-2 disabled:opacity-50"
             >
               <svg className="h-5 w-5" viewBox="0 0 24 24" aria-hidden>
                 <path
@@ -74,7 +96,7 @@ export default function Login() {
                   d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
                 />
               </svg>
-              Sign in with Google
+              {isLoading ? "Opening..." : "Sign in with Google"}
             </button>
           </div>
 
@@ -83,7 +105,8 @@ export default function Login() {
             <button
               type="button"
               onClick={signup}
-              className="rounded-xl bg-neutral-900 px-4 py-2 font-medium text-violet-400 transition-colors hover:bg-neutral-800 hover:text-violet-300 focus:ring-2 focus:ring-violet-500 focus:ring-offset-2"
+              disabled={isLoading}
+              className="rounded-xl bg-neutral-900 px-4 py-2 font-medium text-violet-400 transition-colors hover:bg-neutral-800 hover:text-violet-300 focus:ring-2 focus:ring-violet-500 focus:ring-offset-2 disabled:opacity-50"
             >
               Sign up
             </button>
