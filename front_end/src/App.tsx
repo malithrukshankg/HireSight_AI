@@ -1,55 +1,9 @@
-import { useAuth0 } from "@auth0/auth0-react";
-import './App.css'
-import { useEnsureUser } from './hooks/useEnsureUser'
+import { RouterProvider } from "react-router-dom";
+import "./App.css";
+import { router } from "./routes";
 
 function App() {
-  const {
-    isLoading, // Loading state, the SDK needs to reach Auth0 on load
-    isAuthenticated,
-    error,
-    loginWithRedirect: login, // Starts the login flow
-    logout: auth0Logout, // Starts the logout flow
-    user, // User profile
-    getAccessTokenSilently
-  } = useAuth0();
-
-  const { error: upsertError } = useEnsureUser();
-
-  const signup = () =>
-    login({ authorizationParams: { screen_hint: "signup" } });
-
-  const logout = () =>
-    auth0Logout({ logoutParams: { returnTo: window.location.origin } });
-
-  const printAccessToken = async () => {
-    const token = await getAccessTokenSilently();
-    console.log("ACCESS TOKEN:", token);
-  };
-
-  if (isLoading) return "Loading...";
-
-  return isAuthenticated ? (
-    <>
-      {upsertError && <p>Could not sync user: {upsertError.message}</p>}
-      <p>Logged in as {user?.email}</p>
-
-      <button onClick={printAccessToken}>Print Access Token</button>
-
-      <pre>{JSON.stringify(user, null, 2)}</pre>
-
-      <button onClick={() => auth0Logout({ logoutParams: { returnTo: window.location.origin } })}>
-        Logout
-      </button>
-    </>
-  ) : (
-    <>
-      {error && <p>Error: {error.message}</p>}
-
-      <button onClick={signup}>Signup</button>
-
-      <button onClick={() => login()}>Login</button>
-    </>
-  );
+  return <RouterProvider router={router} />;
 }
 
-export default App
+export default App;
