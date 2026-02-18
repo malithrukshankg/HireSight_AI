@@ -1,0 +1,121 @@
+---
+description: HireSight AI React frontend — type-based (layer) structure, Auth0, minimal diffs
+alwaysApply: true
+globs: front_end/**/*
+---
+
+# HireSight AI – React Frontend Rules
+
+This is the **HireSight AI React frontend** (Vite + TypeScript).
+
+Use a **type-based (layer / horizontal)** project structure. Group files by *kind*, not by feature.
+
+Always follow `ARCHITECTURE_RULES.md` for system-wide concerns (Auth0, roles, API gateway).
+
+---
+
+## 1. Directory Structure (Type-Based)
+
+Under `front_end/src/`, use this layout:
+
+```
+src/
+├── components/
+│   ├── ui/           # Generic reusable: Button, Card, Input, Modal
+│   ├── layout/       # Header, Sidebar, Footer, PageLayout
+│   └── forms/        # Form wrappers, field components (if needed)
+├── pages/            # One component per route (Dashboard, Jobs, Profile)
+├── hooks/            # Custom hooks (useAuth, useApi, etc.)
+├── services/         # API client, Auth0 wrapper, external calls
+├── store/            # Global state (Redux/Zustand) if used
+├── utils/            # Pure helpers, formatters, constants
+├── types/            # Shared TypeScript types/interfaces
+├── routes/           # Route config, lazy loading
+├── assets/
+├── App.tsx
+├── main.tsx
+└── index.css
+```
+
+- **Do not** introduce feature-based top-level folders (e.g. `features/auth/`) unless explicitly requested.
+- New UI building blocks go in `components/ui/` or `components/layout/` as appropriate.
+- Route-level screens go in `pages/`; route definitions in `routes/`.
+
+---
+
+## 2. Components
+
+- **`components/ui/`** — Presentational, reusable, minimal props. No API calls or Auth0 inside.
+- **`components/layout/`** — Structure and shell (nav, footer, main content area). May use auth for conditional rendering.
+- **`components/forms/`** — Form-specific components only if they are shared; otherwise keep forms inside the page or a dedicated component next to the page.
+- Prefer one component per file. Name the file to match the component (e.g. `Button.tsx` for `Button`).
+- Export components from `components/ui/index.ts` (or similar) for clean imports if the project grows.
+
+---
+
+## 3. Pages and Routes
+
+- **`pages/`** — One file per main route. Pages compose components and call hooks/services; keep them thin.
+- **`routes/`** — Central route configuration. Use React Router (or equivalent). Prefer lazy-loaded pages for code splitting.
+- Protected routes must check Auth0 (or a wrapper) and redirect unauthenticated users.
+
+---
+
+## 4. Hooks
+
+- **`hooks/`** — Custom hooks only. Examples: `useAuth` (wrap Auth0), `useApi`, `useLocalStorage`.
+- Hooks must not contain JSX. Keep side effects and subscriptions inside hooks.
+
+---
+
+## 5. Services
+
+- **`services/`** — All external I/O: API client (base URL, auth headers), Auth0 config wrapper, any third-party SDK usage.
+- API calls must use the Auth0 access token where the backend requires JWT. Do not put raw fetch logic in components or pages; use services (and optionally hooks that call services).
+
+---
+
+## 6. State, Utils, Types
+
+- **`store/`** — Global state (e.g. Redux, Zustand) if used. Keep slice/module structure clear.
+- **`utils/`** — Pure functions, constants, formatters. No React or DOM-specific code unless clearly a front-end utility.
+- **`types/`** — Shared TypeScript interfaces/types. Prefer shared types here; page/component-specific types can live next to the file.
+
+---
+
+## 7. File Safety and Scope
+
+- **Do not delete files or folders** without explicit approval.
+- **Do not modify** unless explicitly instructed:
+  - Vite config, `index.html`, root `package.json`
+  - Auth0 provider setup in `main.tsx` (or equivalent) unless the change is requested
+- Only change files that are required for the requested task. Prefer minimal diffs.
+- Do not refactor or “improve” unrelated code.
+
+---
+
+## 8. Auth0 and Backend Alignment
+
+- Authentication is Auth0 only. No password-based login in the frontend.
+- Use the Auth0 React SDK (`@auth0/auth0-react`). Get access tokens via `getAccessTokenSilently` for API calls.
+- User identity is determined by Auth0; align with backend `auth0_sub` and role assumptions.
+
+---
+
+## 9. Refactors and Uncertainty
+
+- Describe the plan before refactoring (what moves where and why).
+- If a change blurs the type-based structure or touches routing/auth, ask for confirmation when unsure.
+- Preserve the type-based layout when adding new functionality.
+
+---
+
+## 10. Priority
+
+When in doubt:
+
+1. Keep the type-based structure (components, pages, hooks, services, utils, types, routes).
+2. Keep auth and API access in services/hooks, not scattered in components.
+3. Make minimal, targeted changes.
+
+Structure and clarity over cleverness.
