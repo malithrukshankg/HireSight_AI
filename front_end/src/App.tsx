@@ -1,5 +1,6 @@
 import { useAuth0 } from "@auth0/auth0-react";
 import './App.css'
+import { useEnsureUser } from './hooks/useEnsureUser'
 
 function App() {
   const {
@@ -11,6 +12,8 @@ function App() {
     user, // User profile
     getAccessTokenSilently
   } = useAuth0();
+
+  const { error: upsertError } = useEnsureUser();
 
   const signup = () =>
     login({ authorizationParams: { screen_hint: "signup" } });
@@ -27,6 +30,7 @@ function App() {
 
   return isAuthenticated ? (
     <>
+      {upsertError && <p>Could not sync user: {upsertError.message}</p>}
       <p>Logged in as {user?.email}</p>
 
       <button onClick={printAccessToken}>Print Access Token</button>
