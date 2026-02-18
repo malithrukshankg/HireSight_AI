@@ -9,6 +9,7 @@ function App() {
     loginWithRedirect: login, // Starts the login flow
     logout: auth0Logout, // Starts the logout flow
     user, // User profile
+    getAccessTokenSilently
   } = useAuth0();
 
   const signup = () =>
@@ -17,17 +18,24 @@ function App() {
   const logout = () =>
     auth0Logout({ logoutParams: { returnTo: window.location.origin } });
 
+  const printAccessToken = async () => {
+    const token = await getAccessTokenSilently();
+    console.log("ACCESS TOKEN:", token);
+  };
+
   if (isLoading) return "Loading...";
 
   return isAuthenticated ? (
     <>
       <p>Logged in as {user?.email}</p>
 
-      <h1>User Profile</h1>
+      <button onClick={printAccessToken}>Print Access Token</button>
 
-      <pre>{JSON.stringify(user ?? {}, null, 2)}</pre>
+      <pre>{JSON.stringify(user, null, 2)}</pre>
 
-      <button onClick={logout}>Logout</button>
+      <button onClick={() => auth0Logout({ logoutParams: { returnTo: window.location.origin } })}>
+        Logout
+      </button>
     </>
   ) : (
     <>

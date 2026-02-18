@@ -9,7 +9,7 @@ createRoot(document.getElementById('root')!).render(
     <Auth0Provider
       domain="dev-wt0zci4ynfbqzxos.us.auth0.com"
       clientId="LpxnYgirAye57HxI2yAYpLJdEt5BauI8"
-      authorizationParams={{ redirect_uri: window.location.origin }}
+      authorizationParams={{ redirect_uri: window.location.origin,audience: "https://api.hiresight.local"}}
     >
       <App />
     </Auth0Provider>
