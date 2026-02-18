@@ -1,6 +1,7 @@
 from pydantic import BaseModel
 from enum import Enum
 from typing import Optional
+import uuid
 
 class roleTypes(str,Enum):
     admin = "admin"
@@ -8,7 +9,7 @@ class roleTypes(str,Enum):
     candidate = "candidate"
 
 class userCreate(BaseModel):
-    id: int
+    id: uuid.UUID
     name: Optional[str] = ""
     email: str
     auth0_sub: Optional[str] =""

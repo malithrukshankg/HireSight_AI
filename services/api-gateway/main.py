@@ -13,6 +13,7 @@ def health():
 
 app.add_middleware(
     CORSMiddleware,
+    allow_origins=["http://localhost:5173"],  # Vite dev; add production origin(s) as needed
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

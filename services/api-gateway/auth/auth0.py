@@ -16,6 +16,7 @@ if not AUTH0_DOMAIN or not AUTH0_AUDIENCE or not AUTH0_ISSUER:
     )
 
 JWKS_URL = f"https://{AUTH0_DOMAIN}/.well-known/jwks.json"
+USERINFO_URL = f"https://{AUTH0_DOMAIN}/userinfo"
 
 bearer_scheme = HTTPBearer(auto_error=True)
 
@@ -76,6 +77,17 @@ async def verify_access_token(token: str) -> dict:
         raise HTTPException(status_code=401, detail="Token verification failed")
 
 
+async def _fetch_userinfo(access_token: str) -> dict:
+    """Fetch user profile from Auth0 User Info (includes email)."""
+    async with httpx.AsyncClient(timeout=10) as client:
+        resp = await client.get(
+            USERINFO_URL,
+            headers={"Authorization": f"Bearer {access_token}"},
+        )
+        resp.raise_for_status()
+        return resp.json()
+
+
 async def get_current_principal(
     creds: HTTPAuthorizationCredentials = Depends(bearer_scheme),
 ) -> dict:
@@ -83,6 +95,14 @@ async def get_current_principal(
     FastAPI dependency:
     - reads Authorization: Bearer <token>
     - verifies token
+    - if email is missing from token, fetches it from Auth0 User Info
     - returns claims
     """
-    return await verify_access_token(creds.credentials)
+    payload = await verify_access_token(creds.credentials)
+    if not payload.get("email"):
+        try:
+            userinfo = await _fetch_userinfo(creds.credentials)
+            payload["email"] = userinfo.get("email") or payload.get("email")
+        except Exception:
+            pass  # leave email missing; route may raise 400
+    return payload
