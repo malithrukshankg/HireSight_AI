@@ -33,8 +33,15 @@ async def upsert_user(
     if not auth0_sub:
         raise HTTPException(status_code=400, detail="auth0_sub not found in Auth0 token")
     
-    # Extract role from Auth0 claims if available, otherwise default to "candidate"
-    role = principal.get("role") or principal.get("https://hiresight.ai/role") or "candidate"
+    # Extract role from Auth0 claims. RBAC uses https://hiresight.local/roles (array).
+    roles_arr = principal.get("https://hiresight.local/roles")
+    first_role = roles_arr[0] if isinstance(roles_arr, list) and roles_arr else None
+    role = (
+        (first_role if isinstance(first_role, str) else None)
+        or principal.get("role")
+        or principal.get("https://hiresight.ai/role")
+        or "candidate"
+    )
     
     # Ensure role is one of the valid values
     if role not in ["admin", "recruiter", "candidate"]:
