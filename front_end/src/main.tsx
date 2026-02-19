@@ -12,7 +12,7 @@ createRoot(document.getElementById('root')!).render(
       clientId="LpxnYgirAye57HxI2yAYpLJdEt5BauI8"
       authorizationParams={{ redirect_uri: window.location.origin,audience: "https://api.hiresight.local"}}
       onRedirectCallback={(appState) => {
-        const returnTo = appState?.returnTo || '/';
+        const returnTo = appState?.returnTo || '/role';
         router.navigate(returnTo);
       }}
     >
