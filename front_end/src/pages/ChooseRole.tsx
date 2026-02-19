@@ -47,21 +47,21 @@ export default function ChooseRole() {
   };
 
   return (
-    <main className="flex min-h-0 flex-1 flex-col items-center justify-center overflow-auto bg-white p-8 lg:p-16">
+    <main className="flex min-h-0 flex-1 flex-col items-center justify-center overflow-auto p-8 lg:p-16">
       <div className="mx-auto w-full max-w-2xl text-center">
-        <h1 className="text-3xl font-bold text-neutral-900">Choose your role</h1>
-        <p className="mt-2 text-neutral-500">Confirm how you&apos;d like to use HireSight</p>
+        <h1 className="text-3xl font-bold text-white">Choose your role</h1>
+        <p className="mt-2 text-white/90">Confirm how you&apos;d like to use HireSight</p>
 
         {upsertError && (
-          <p className="mt-6 rounded-lg bg-red-50 p-3 text-sm text-red-600">
+          <p className="mt-6 rounded-lg bg-red-500/20 p-3 text-sm text-red-100">
             Could not sync user: {upsertError.message}
           </p>
         )}
 
-        <div className="mt-8 rounded-xl border border-neutral-200 bg-neutral-50 p-5">
-          <p className="text-neutral-700">
+        <div className="mt-8 rounded-xl border border-white/20 bg-white/10 p-5 backdrop-blur-sm">
+          <p className="text-white/95">
             You are logged in as{" "}
-            <span className="inline-flex items-center rounded-full bg-violet-100 px-3 py-0.5 text-sm font-semibold text-violet-700">
+            <span className="inline-flex items-center rounded-full bg-accent/30 px-3 py-0.5 text-sm font-semibold text-white">
               {currentRole}
             </span>
             . If you like to continue in this role click Continue.
@@ -73,21 +73,21 @@ export default function ChooseRole() {
             type="button"
             onClick={handleContinue}
             disabled={roleSwitchLoading}
-            className="w-full rounded-xl bg-neutral-900 py-3 px-5 font-medium text-white transition-colors hover:bg-neutral-800 focus:ring-2 focus:ring-neutral-500 focus:ring-offset-2 disabled:opacity-50"
+            className="w-full rounded-xl bg-accent py-3 px-5 font-medium text-white transition-colors hover:bg-accent-hover focus:ring-2 focus:ring-accent focus:ring-offset-2 focus:ring-offset-0 disabled:opacity-50"
           >
             Continue as {currentRole}
           </button>
 
           {otherRole && (
             <div className="space-y-2">
-              <p className="text-sm text-neutral-500">
-                Or switch to <span className="font-medium text-neutral-700">{otherRole}</span>
+              <p className="text-sm text-white/90">
+                Or switch to <span className="font-medium text-white">{otherRole}</span>
               </p>
               <button
                 type="button"
                 onClick={() => handleSwitchRole(otherRole)}
                 disabled={roleSwitchLoading}
-                className="w-full rounded-xl border-2 border-violet-600 py-3 px-5 font-medium text-violet-600 transition-colors hover:bg-violet-50 focus:ring-2 focus:ring-violet-500 focus:ring-offset-2 disabled:opacity-50"
+                className="w-full rounded-xl border-2 border-white/50 bg-white/10 py-3 px-5 font-medium text-white transition-colors hover:bg-white/20 focus:ring-2 focus:ring-white/50 focus:ring-offset-2 focus:ring-offset-0 disabled:opacity-50"
               >
                 {roleSwitchLoading ? "Switching..." : `Change role to ${otherRole}`}
               </button>
@@ -96,7 +96,7 @@ export default function ChooseRole() {
         </div>
 
         {roleSwitchError && (
-          <p className="mt-6 rounded-lg bg-red-50 p-3 text-sm text-red-600">{roleSwitchError}</p>
+          <p className="mt-6 rounded-lg bg-red-500/20 p-3 text-sm text-red-100">{roleSwitchError}</p>
         )}
       </div>
     </main>
