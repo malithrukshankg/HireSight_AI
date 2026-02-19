@@ -1,5 +1,5 @@
 ---
-description: HireSight AI React frontend — type-based (layer) structure, Auth0, minimal diffs
+description: HireSight AI React frontend — type-based structure, role-aware routing, Auth0, minimal diffs
 alwaysApply: true
 globs: front_end/**/*
 ---
@@ -22,10 +22,13 @@ Under `front_end/src/`, use this layout:
 src/
 ├── components/
 │   ├── ui/           # Generic reusable: Button, Card, Input, Modal
-│   ├── layout/       # Header, Sidebar, Footer, PageLayout
+│   ├── layout/       # Header, Sidebar, Footer, PageLayout, RoleGuard, RoleRedirect
 │   └── forms/        # Form wrappers, field components (if needed)
-├── pages/            # One component per route (Dashboard, Jobs, Profile)
-├── hooks/            # Custom hooks (useAuth, useApi, etc.)
+├── pages/            # Route-level screens
+│   ├── admin/        # Admin-only: AdminLayout, Dashboard, etc.
+│   ├── recruiter/    # Recruiter-only: RecruiterLayout, Dashboard, etc.
+│   └── candidate/    # Candidate-only: CandidateLayout, Dashboard, etc.
+├── hooks/            # Custom hooks (useAuth, useApi, useCurrentRole, etc.)
 ├── services/         # API client, Auth0 wrapper, external calls
 ├── store/            # Global state (Redux/Zustand) if used
 ├── utils/            # Pure helpers, formatters, constants
@@ -46,7 +49,7 @@ src/
 ## 2. Components
 
 - **`components/ui/`** — Presentational, reusable, minimal props. No API calls or Auth0 inside.
-- **`components/layout/`** — Structure and shell (nav, footer, main content area). May use auth for conditional rendering.
+- **`components/layout/`** — Structure and shell (Header, Footer, RoleGuard, RoleRedirect). May use auth for conditional rendering.
 - **`components/forms/`** — Form-specific components only if they are shared; otherwise keep forms inside the page or a dedicated component next to the page.
 - Prefer one component per file. Name the file to match the component (e.g. `Button.tsx` for `Button`).
 - Export components from `components/ui/index.ts` (or similar) for clean imports if the project grows.
@@ -61,21 +64,60 @@ src/
 
 ---
 
-## 4. Hooks
+## 4. Role-Aware Routing (Option 3)
 
-- **`hooks/`** — Custom hooks only. Examples: `useAuth` (wrap Auth0), `useApi`, `useLocalStorage`.
+The app uses **role-specific URL paths** and **layout-owned routing**. Follow these patterns:
+
+### 4.1 URL Structure
+
+- `/` — Redirects via `RoleRedirect` to the user's role home
+- `/role` — ChooseRole (confirm or switch role)
+- `/admin` — Admin-only routes
+- `/recruiter` — Recruiter-only routes
+- `/candidate` — Candidate-only routes
+
+### 4.2 Role Layouts Own Their Routing
+
+- **Layouts** (`pages/admin/AdminLayout.tsx`, `pages/recruiter/RecruiterLayout.tsx`, `pages/candidate/CandidateLayout.tsx`) import and render their own pages.
+- Each layout uses `<Routes>` and `<Route>` internally for that role's screens.
+- **Do not** import role-specific dashboards or pages in `routes/index.tsx`; only import the layouts.
+- `routes/index.tsx` defines: `RoleGuard` → `Layout` (as index child). The layout handles the rest.
+
+### 4.3 Adding New Role-Specific Pages
+
+- Add new pages inside the role folder (e.g. `pages/admin/Settings.tsx`).
+- Add the route inside the layout's `<Routes>` (e.g. `<Route path="settings" element={<AdminSettings />} />`).
+- Do **not** add role-specific routes to `routes/index.tsx`.
+
+### 4.4 Shared vs Role-Specific Code
+
+- **Shared:** `components/ui/`, `components/layout/` (Header, Footer, RoleGuard, RoleRedirect), `hooks/`, `services/`, `utils/`, `types/`
+- **Role-specific:** `pages/admin/`, `pages/recruiter/`, `pages/candidate/`
+- Shared components must remain role-agnostic; no role checks inside `components/ui/`.
+
+### 4.5 Role Guards
+
+- Use `RoleGuard` with `allowedRoles` for `/admin`, `/recruiter`, `/candidate`.
+- Use `RoleRedirect` for `/` to send users to `/{role}` or `/role`.
+- Use `useCurrentRole()` from `hooks/useCurrentRole.ts` when the UI needs to branch on role.
+
+---
+
+## 5. Hooks
+
+- **`hooks/`** — Custom hooks only. Examples: `useAuth` (wrap Auth0), `useApi`, `useCurrentRole`, `useLocalStorage`.
 - Hooks must not contain JSX. Keep side effects and subscriptions inside hooks.
 
 ---
 
-## 5. Services
+## 6. Services
 
 - **`services/`** — All external I/O: API client (base URL, auth headers), Auth0 config wrapper, any third-party SDK usage.
 - API calls must use the Auth0 access token where the backend requires JWT. Do not put raw fetch logic in components or pages; use services (and optionally hooks that call services).
 
 ---
 
-## 6. State, Utils, Types
+## 7. State, Utils, Types
 
 - **`store/`** — Global state (e.g. Redux, Zustand) if used. Keep slice/module structure clear.
 - **`utils/`** — Pure functions, constants, formatters. No React or DOM-specific code unless clearly a front-end utility.
@@ -83,7 +125,7 @@ src/
 
 ---
 
-## 7. File Safety and Scope
+## 8. File Safety and Scope
 
 - **Do not delete files or folders** without explicit approval.
 - **Do not modify** unless explicitly instructed:
@@ -94,7 +136,7 @@ src/
 
 ---
 
-## 8. UI Theme and Colors
+## 9. UI Theme and Colors
 
 When implementing UI changes, follow the established **atmospheric warm theme**:
 
@@ -110,7 +152,7 @@ When implementing UI changes, follow the established **atmospheric warm theme**:
 
 ---
 
-## 9. Auth0 and Backend Alignment
+## 10. Auth0 and Backend Alignment
 
 - Authentication is Auth0 only. No password-based login in the frontend.
 - Use the Auth0 React SDK (`@auth0/auth0-react`). Get access tokens via `getAccessTokenSilently` for API calls.
@@ -118,21 +160,22 @@ When implementing UI changes, follow the established **atmospheric warm theme**:
 
 ---
 
-## 10. Refactors and Uncertainty
+## 11. Refactors and Uncertainty
 
 - Describe the plan before refactoring (what moves where and why).
 - If a change blurs the type-based structure or touches routing/auth, ask for confirmation when unsure.
-- Preserve the type-based layout when adding new functionality.
+- Preserve the type-based layout and role-aware routing patterns when adding new functionality.
 
 ---
 
-## 11. Priority
+## 12. Priority
 
 When in doubt:
 
 1. Keep the type-based structure (components, pages, hooks, services, utils, types, routes).
-2. Keep auth and API access in services/hooks, not scattered in components.
-3. Make minimal, targeted changes.
-4. Use the atmospheric warm theme (orange accent, white text, gradient background) for new UI.
+2. Follow role-aware routing (layouts own their pages; routes/index.tsx imports layouts only).
+3. Keep auth and API access in services/hooks, not scattered in components.
+4. Make minimal, targeted changes.
+5. Use the atmospheric warm theme (orange accent, white text, gradient background) for new UI.
 
 Structure and clarity over cleverness.
