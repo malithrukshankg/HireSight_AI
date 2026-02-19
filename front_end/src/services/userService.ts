@@ -24,3 +24,29 @@ export async function upsertUser(
 
   return response.json() as Promise<UpsertUserResponse>;
 }
+
+/**
+ * Switch current user's role (candidate <-> recruiter) via Auth0 Management API.
+ * After success, call getAccessTokenSilently({ ignoreCache: true }) to get a new token
+ * with updated role — the JWT is issued at login and does not update until refresh/re-login.
+ */
+export async function switchRole(
+  accessToken: string,
+  role: "candidate" | "recruiter"
+): Promise<{ message: string; role: string }> {
+  const response = await fetch(`${API_BASE_URL}/me/switch-role`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ role }),
+  });
+
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({ detail: response.statusText }));
+    throw new Error((err as { detail?: string }).detail || `Switch role failed: ${response.status}`);
+  }
+
+  return response.json() as Promise<{ message: string; role: string }>;
+}
