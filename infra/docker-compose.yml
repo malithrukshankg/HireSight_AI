@@ -42,6 +42,8 @@ services:
       AUTH0_ISSUER: https://dev-wt0zci4ynfbqzxos.us.auth0.com/
       AUTH0_M2M_CLIENT_ID: D7DiNUsX84izLtt6MTNlmoMJpiUy80gv
       AUTH0_M2M_CLIENT_SECRET: sMIpiJxN2BAQKnXdCCaJR2IHX20DzlWV96wVda_NAqmeyiGg4acM7e0DUZb3xfOp
+      AUTH0_ROLE_ID_CANDIDATE: rol_vS8bc4s2RWNTUbiF
+      AUTH0_ROLE_ID_RECRUITER: rol_TRFGELaF2kzTUEIt
     volumes:
       - ../services/api-gateway:/app
     command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
