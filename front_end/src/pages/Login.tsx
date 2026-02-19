@@ -6,7 +6,9 @@ export default function Login() {
   const { isAuthenticated, error, loginWithPopup } = useAuth0();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const returnTo = searchParams.get("returnTo") || "/role";
+  const rawReturnTo = searchParams.get("returnTo");
+  const decodedReturnTo = rawReturnTo ? decodeURIComponent(rawReturnTo) : null;
+  const returnTo = !decodedReturnTo || decodedReturnTo === "/" ? "/role" : decodedReturnTo;
   const [isLoading, setIsLoading] = useState(false);
 
   const handleAuth = async (
