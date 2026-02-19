@@ -9,14 +9,8 @@ export default function Dashboard() {
   const [roleSwitchLoading, setRoleSwitchLoading] = useState(false);
   const [roleSwitchError, setRoleSwitchError] = useState<string | null>(null);
 
-  // Derive current role from token (user object may include custom claims)
-  const currentRole =
-    (user as Record<string, unknown>)?.["https://hiresight.ai/role"] ??
-    (user as Record<string, unknown>)?.role ??
-    "candidate";
-
   const handleSwitchRole = async (newRole: "candidate" | "recruiter") => {
-    if (newRole === currentRole || roleSwitchLoading) return;
+    if (roleSwitchLoading) return;
     setRoleSwitchError(null);
     setRoleSwitchLoading(true);
     try {
@@ -47,13 +41,13 @@ export default function Dashboard() {
         <span>Role: </span>
         <button
           onClick={() => handleSwitchRole("candidate")}
-          disabled={currentRole === "candidate" || roleSwitchLoading}
+          disabled={roleSwitchLoading}
         >
           Candidate
         </button>
         <button
           onClick={() => handleSwitchRole("recruiter")}
-          disabled={currentRole === "recruiter" || roleSwitchLoading}
+          disabled={roleSwitchLoading}
         >
           Recruiter
         </button>
