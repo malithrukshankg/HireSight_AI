@@ -21,7 +21,7 @@ export default function ChooseRole() {
         : null;
 
   const handleContinue = () => {
-    navigate("/", { replace: true });
+    navigate(`/${currentRole}`, { replace: true });
   };
 
   const handleSwitchRole = async (newRole: "candidate" | "recruiter") => {

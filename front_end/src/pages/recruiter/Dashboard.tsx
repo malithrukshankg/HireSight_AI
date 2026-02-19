@@ -1,7 +1,7 @@
 import { useAuth0 } from "@auth0/auth0-react";
-import { useEnsureUser } from "../hooks/useEnsureUser";
+import { useEnsureUser } from "../../hooks/useEnsureUser";
 
-export default function Dashboard() {
+export default function RecruiterDashboard() {
   const { user, getAccessTokenSilently, logout: auth0Logout } = useAuth0();
   const { error: upsertError } = useEnsureUser();
 
@@ -18,7 +18,7 @@ export default function Dashboard() {
             Could not sync user: {upsertError.message}
           </p>
         )}
-        <h1 className="text-3xl font-bold text-white">Dashboard</h1>
+        <h1 className="text-3xl font-bold text-white">Recruiter Dashboard</h1>
         <p className="mt-2 text-white/90">Logged in as {user?.email}</p>
 
         <div className="mt-8 rounded-xl border border-white/20 bg-white/10 p-6 backdrop-blur-sm">
