@@ -94,7 +94,23 @@ src/
 
 ---
 
-## 8. Auth0 and Backend Alignment
+## 8. UI Theme and Colors
+
+When implementing UI changes, follow the established **atmospheric warm theme**:
+
+- **Accent color:** Orange (`#f97316`, Tailwind: `bg-accent`, `text-accent`) for primary buttons, links, and emphasis.
+- **Backgrounds:** Use the atmospheric gradient via `bg-atmospheric` (warm amber → slate blue). For cards/panels, use semi-transparent white (`bg-white/10`, `border-white/20`) with `backdrop-blur-sm`.
+- **Text:** White (`text-white`) for headings, `text-white/90` or `text-white/80` for secondary text, for high contrast on the gradient.
+- **Primary buttons:** `bg-accent` with `hover:bg-accent-hover`, white text.
+- **Secondary/outline buttons:** `border-2 border-white/50 bg-white/10` with `hover:bg-white/20`, white text.
+- **Links:** `text-accent` with `hover:text-accent-light` or underline on hover.
+- **Error states:** `bg-red-500/20 text-red-100` for inline errors.
+- **Header/Footer:** Semi-transparent dark (`bg-black/20 border-white/10`) with white text and orange accents on hover.
+- Theme tokens are defined in `index.css` (`@theme` block and `.bg-atmospheric`). Do not introduce conflicting palettes (e.g. violet, blue accents); use the warm orange theme consistently.
+
+---
+
+## 9. Auth0 and Backend Alignment
 
 - Authentication is Auth0 only. No password-based login in the frontend.
 - Use the Auth0 React SDK (`@auth0/auth0-react`). Get access tokens via `getAccessTokenSilently` for API calls.
@@ -102,7 +118,7 @@ src/
 
 ---
 
-## 9. Refactors and Uncertainty
+## 10. Refactors and Uncertainty
 
 - Describe the plan before refactoring (what moves where and why).
 - If a change blurs the type-based structure or touches routing/auth, ask for confirmation when unsure.
@@ -110,12 +126,13 @@ src/
 
 ---
 
-## 10. Priority
+## 11. Priority
 
 When in doubt:
 
 1. Keep the type-based structure (components, pages, hooks, services, utils, types, routes).
 2. Keep auth and API access in services/hooks, not scattered in components.
 3. Make minimal, targeted changes.
+4. Use the atmospheric warm theme (orange accent, white text, gradient background) for new UI.
 
 Structure and clarity over cleverness.
