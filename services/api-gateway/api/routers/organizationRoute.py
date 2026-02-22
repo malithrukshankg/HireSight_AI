@@ -38,6 +38,18 @@ async def list_organizations(
     return await OrganizationController(db).list_all(limit=limit, offset=offset)
 
 
+@organizationRouter.get("/me", response_model=list[OrganizationRead])
+async def list_my_organizations(
+    db: DBSession,
+    principal: dict = Depends(require_admin_or_recruiter),
+):
+    """List organizations linked to the current user. Admin or recruiter only."""
+    auth0_sub = principal.get("sub")
+    if not auth0_sub:
+        raise HTTPException(status_code=400, detail="auth0_sub not found in token")
+    return await OrganizationController(db).list_for_current_user(auth0_sub)
+
+
 @organizationRouter.get("/{id}", response_model=OrganizationRead)
 async def get_organization(
     id: uuid.UUID,

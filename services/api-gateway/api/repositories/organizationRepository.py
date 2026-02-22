@@ -32,6 +32,19 @@ class OrganizationRepository:
         )
         return list(result.scalars().all())
 
+    async def find_by_user_id(self, user_id: uuid.UUID) -> list[Organization]:
+        """Find all organizations linked to a user via RecruiterOrganization."""
+        stmt = (
+            select(Organization)
+            .join(
+                RecruiterOrganization,
+                Organization.id == RecruiterOrganization.organization_id,
+            )
+            .where(RecruiterOrganization.user_id == user_id)
+        )
+        result = await self.db.execute(stmt)
+        return list(result.scalars().all())
+
     async def update(self, org: Organization, **kwargs) -> Organization:
         """Update organization fields. Only non-None kwargs are applied."""
         for key, value in kwargs.items():

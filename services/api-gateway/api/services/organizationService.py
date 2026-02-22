@@ -33,6 +33,10 @@ class OrganizationService:
             raise ValueError("Offset must be non-negative")
         return await self.repo.find_all(limit=limit, offset=offset)
 
+    async def list_for_user(self, user_id: uuid.UUID) -> list[Organization]:
+        """List organizations linked to this user via RecruiterOrganization."""
+        return await self.repo.find_by_user_id(user_id)
+
     async def update(self, id: uuid.UUID, payload: OrganizationUpdate) -> Organization:
         """Update an organization. Raises ValueError if not found."""
         org = await self.repo.find_by_id(id)

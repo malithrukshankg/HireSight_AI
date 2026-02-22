@@ -43,6 +43,16 @@ class OrganizationController:
         except ValueError as e:
             self._handle_error(e)
 
+    async def list_for_current_user(self, auth0_sub: str) -> list[Organization]:
+        user_repo = UserRepository(self.db)
+        user = await user_repo.find_by_auth0_sub(auth0_sub)
+        if user is None:
+            raise HTTPException(status_code=404, detail="User not found")
+        try:
+            return await self.service.list_for_user(user_id=user.id)
+        except ValueError as e:
+            self._handle_error(e)
+
     async def update(self, id: uuid.UUID, payload: OrganizationUpdate) -> Organization:
         try:
             return await self.service.update(id, payload)
