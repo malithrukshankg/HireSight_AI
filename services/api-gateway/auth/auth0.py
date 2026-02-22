@@ -106,3 +106,35 @@ async def get_current_principal(
         except Exception:
             pass  # leave email missing; route may raise 400
     return payload
+
+
+def _extract_role(principal: dict) -> str:
+    """Extract role from Auth0 principal. Same logic as userRoute."""
+    roles_arr = principal.get("https://hiresight.local/roles")
+    first_role = roles_arr[0] if isinstance(roles_arr, list) and roles_arr else None
+    role = (
+        (first_role if isinstance(first_role, str) else None)
+        or principal.get("role")
+        or principal.get("https://hiresight.ai/role")
+        or "candidate"
+    )
+    if role not in ("admin", "recruiter", "candidate"):
+        role = "candidate"
+    return role
+
+
+async def require_admin_or_recruiter(
+    principal: dict = Depends(get_current_principal),
+) -> dict:
+    """
+    FastAPI dependency: requires admin or recruiter role.
+    Raises 403 if the user has any other role (e.g. candidate).
+    Returns the principal dict for downstream use.
+    """
+    role = _extract_role(principal)
+    if role not in ("admin", "recruiter"):
+        raise HTTPException(
+            status_code=403,
+            detail="Forbidden. Admin or recruiter role required.",
+        )
+    return principal
