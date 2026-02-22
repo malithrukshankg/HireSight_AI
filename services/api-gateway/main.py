@@ -2,6 +2,7 @@ from fastapi import FastAPI,Depends
 from fastapi.middleware.cors import CORSMiddleware
 from api.routers.userRoute import userRouter
 from api.routers.meRoute import meRouter
+from api.routers.organizationRoute import organizationRouter
 from auth.auth0 import get_current_principal
 
 
@@ -32,4 +33,5 @@ async def private_route(principal: dict = Depends(get_current_principal)):
 
 app.include_router(userRouter)
 app.include_router(meRouter)
+app.include_router(organizationRouter)
 
