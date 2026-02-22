@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from models import Organization
 from models.organizations import PlanEnum
+from models.recruiter_organization import RecruiterOrganization
 
 
 class OrganizationRepository:
@@ -43,4 +44,10 @@ class OrganizationRepository:
     async def delete(self, org: Organization) -> None:
         """Delete an organization."""
         await self.db.delete(org)
+        await self.db.commit()
+
+    async def link_user(self, user_id: uuid.UUID, organization_id: uuid.UUID) -> None:
+        """Create RecruiterOrganization link between user and organization."""
+        ro = RecruiterOrganization(user_id=user_id, organization_id=organization_id)
+        self.db.add(ro)
         await self.db.commit()

@@ -4,6 +4,7 @@ from fastapi import HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.repositories.organizationRepository import OrganizationRepository
+from api.repositories.userRepository import UserRepository
 from api.schemas.organizationSchema import OrganizationCreate, OrganizationUpdate
 from api.services.organizationService import OrganizationService
 from models import Organization
@@ -19,9 +20,13 @@ class OrganizationController:
             raise HTTPException(status_code=404, detail=str(e))
         raise HTTPException(status_code=400, detail=str(e))
 
-    async def create(self, payload: OrganizationCreate) -> Organization:
+    async def create(self, payload: OrganizationCreate, auth0_sub: str) -> Organization:
+        user_repo = UserRepository(self.db)
+        user = await user_repo.find_by_auth0_sub(auth0_sub)
+        if user is None:
+            raise HTTPException(status_code=404, detail="User not found")
         try:
-            return await self.service.create(payload)
+            return await self.service.create(payload, user_id=user.id)
         except ValueError as e:
             self._handle_error(e)
 

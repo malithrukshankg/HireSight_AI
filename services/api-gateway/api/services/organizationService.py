@@ -9,12 +9,14 @@ class OrganizationService:
     def __init__(self, repo: OrganizationRepository):
         self.repo = repo
 
-    async def create(self, payload: OrganizationCreate) -> Organization:
-        """Create a new organization."""
+    async def create(self, payload: OrganizationCreate, user_id: uuid.UUID) -> Organization:
+        """Create a new organization and link the creating user to it."""
         name = (payload.name or "").strip()
         if not name:
             raise ValueError("Organization name is required and cannot be empty")
-        return await self.repo.create(name=name, plan=payload.plan)
+        org = await self.repo.create(name=name, plan=payload.plan)
+        await self.repo.link_user(user_id=user_id, organization_id=org.id)
+        return org
 
     async def get_by_id(self, id: uuid.UUID) -> Organization:
         """Get an organization by ID. Raises ValueError if not found."""

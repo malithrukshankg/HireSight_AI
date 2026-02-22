@@ -1,7 +1,7 @@
 import uuid
 
 from database import DBSession
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 
 from api.controllers.organizationController import OrganizationController
 from api.schemas.organizationSchema import (
@@ -21,7 +21,10 @@ async def create_organization(
     principal: dict = Depends(require_admin_or_recruiter),
 ):
     """Create a new organization. Admin or recruiter only."""
-    return await OrganizationController(db).create(payload)
+    auth0_sub = principal.get("sub")
+    if not auth0_sub:
+        raise HTTPException(status_code=400, detail="auth0_sub not found in token")
+    return await OrganizationController(db).create(payload, auth0_sub)
 
 
 @organizationRouter.get("", response_model=list[OrganizationRead])
