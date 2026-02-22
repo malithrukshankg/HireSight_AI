@@ -12,6 +12,7 @@ from models import Organization
 
 class OrganizationController:
     def __init__(self, db: AsyncSession):
+        self.db = db
         self.repo = OrganizationRepository(db)
         self.service = OrganizationService(self.repo)
 
