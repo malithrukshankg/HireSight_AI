@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { getMyJobs, createJob } from "../../services/jobService";
+import { getMyJobs, createJob, deleteJob } from "../../services/jobService";
 import { getOrganizationsForCurrentUser } from "../../services/organizationService";
 import type { Job, JobCreate, JobStatus } from "../../types/job";
 import type { Organization } from "../../types/organization";
@@ -17,20 +17,48 @@ const JOB_STATUSES: JobStatus[] = ["draft", "open", "closed"];
 function JobCard({
   job,
   orgName,
+  onDelete,
+  getToken,
 }: {
   job: Job;
   orgName: string;
+  onDelete: (job: Job) => void;
+  getToken: () => Promise<string>;
 }) {
+  const [deleting, setDeleting] = useState(false);
+
+  const handleDeleteClick = async () => {
+    if (!window.confirm(`Delete job "${job.title}"?`)) return;
+    setDeleting(true);
+    try {
+      const token = await getToken();
+      await deleteJob(token, job.id);
+      onDelete(job);
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   return (
-    <div className="flex flex-col gap-1 rounded-xl border border-white/20 bg-white/10 p-4 backdrop-blur-sm">
-      <p className="font-medium text-white">{job.title}</p>
-      <p className="text-sm text-white/80">{orgName}</p>
-      <p className="text-sm text-white/70">
-        {job.location} · {job.employment_type}
-      </p>
-      <span className="mt-1 inline-flex w-fit rounded-lg bg-white/20 px-2 py-0.5 text-xs font-medium text-white">
-        {job.status}
-      </span>
+    <div className="flex items-center justify-between rounded-xl border border-white/20 bg-white/10 p-4 backdrop-blur-sm">
+      <div className="flex flex-col gap-1">
+        <p className="font-medium text-white">{job.title}</p>
+        <p className="text-sm text-white/80">{orgName}</p>
+        <p className="text-sm text-white/70">
+          {job.location} · {job.employment_type}
+        </p>
+        <span className="mt-1 inline-flex w-fit rounded-lg bg-white/20 px-2 py-0.5 text-xs font-medium text-white">
+          {job.status}
+        </span>
+      </div>
+      <button
+        type="button"
+        onClick={handleDeleteClick}
+        disabled={deleting}
+        className="rounded-xl bg-red-500/30 py-2 px-4 text-sm font-medium text-white transition-colors hover:bg-red-500/50"
+      >
+        {deleting ? "Deleting..." : "Delete"}
+      </button>
     </div>
   );
 }
@@ -87,6 +115,10 @@ export function JobsTile({ getToken }: JobsTileProps) {
   const getOrgName = (orgId: string) => {
     const org = organizations.find((o) => o.id === orgId);
     return org?.name ?? "Unknown";
+  };
+
+  const handleJobDelete = (deleted: Job) => {
+    setJobs((prev) => prev.filter((j) => j.id !== deleted.id));
   };
 
   const handleCreate = async () => {
@@ -285,6 +317,8 @@ export function JobsTile({ getToken }: JobsTileProps) {
               key={job.id}
               job={job}
               orgName={getOrgName(job.organization_id)}
+              onDelete={handleJobDelete}
+              getToken={getToken}
             />
           ))}
         </div>
