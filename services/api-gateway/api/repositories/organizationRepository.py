@@ -64,3 +64,15 @@ class OrganizationRepository:
         ro = RecruiterOrganization(user_id=user_id, organization_id=organization_id)
         self.db.add(ro)
         await self.db.commit()
+
+    async def user_is_org_member(
+        self, user_id: uuid.UUID, organization_id: uuid.UUID
+    ) -> bool:
+        """Check if a user is a member of an organization via RecruiterOrganization."""
+        result = await self.db.execute(
+            select(RecruiterOrganization).where(
+                RecruiterOrganization.user_id == user_id,
+                RecruiterOrganization.organization_id == organization_id,
+            )
+        )
+        return result.scalar_one_or_none() is not None
