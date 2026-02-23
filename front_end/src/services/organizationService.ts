@@ -1,5 +1,38 @@
 import { API_BASE_URL } from "../utils/config";
-import type { Organization, OrganizationUpdate } from "../types/organization";
+import type {
+  Organization,
+  OrganizationCreate,
+  OrganizationUpdate,
+} from "../types/organization";
+
+/**
+ * Create a new organization. The current user is automatically linked to it.
+ */
+export async function createOrganization(
+  accessToken: string,
+  payload: OrganizationCreate
+): Promise<Organization> {
+  const response = await fetch(`${API_BASE_URL}/organizations`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ name: payload.name, plan: payload.plan ?? "free" }),
+  });
+
+  if (!response.ok) {
+    const err = await response
+      .json()
+      .catch(() => ({ detail: response.statusText }));
+    throw new Error(
+      (err as { detail?: string }).detail ||
+        `Create organization failed: ${response.status}`
+    );
+  }
+
+  return response.json() as Promise<Organization>;
+}
 
 /**
  * Fetch organizations linked to the current user via RecruiterOrganization.

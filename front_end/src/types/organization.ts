@@ -8,6 +8,11 @@ export type Organization = {
   updated_at: string;
 };
 
+export type OrganizationCreate = {
+  name: string;
+  plan?: PlanType;
+};
+
 export type OrganizationUpdate = {
   name?: string;
   plan?: PlanType;

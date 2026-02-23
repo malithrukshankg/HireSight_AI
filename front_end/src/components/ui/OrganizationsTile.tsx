@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import {
   getOrganizationsForCurrentUser,
+  createOrganization,
   updateOrganization,
   deleteOrganization,
 } from "../../services/organizationService";
@@ -140,6 +141,11 @@ export function OrganizationsTile({ getToken }: OrganizationsTileProps) {
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [createName, setCreateName] = useState("");
+  const [createPlan, setCreatePlan] = useState<PlanType>("free");
+  const [creating, setCreating] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
 
   const fetchOrganizations = useCallback(async () => {
     try {
@@ -168,16 +174,102 @@ export function OrganizationsTile({ getToken }: OrganizationsTileProps) {
     setOrganizations((prev) => prev.filter((o) => o.id !== deleted.id));
   };
 
+  const handleCreate = async () => {
+    if (createName.trim() === "") return;
+    setCreating(true);
+    setCreateError(null);
+    try {
+      const token = await getToken();
+      const created = await createOrganization(token, {
+        name: createName.trim(),
+        plan: createPlan,
+      });
+      setOrganizations((prev) => [created, ...prev]);
+      setCreateName("");
+      setCreatePlan("free");
+      setShowCreateForm(false);
+    } catch (e) {
+      setCreateError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const handleCancelCreate = () => {
+    setShowCreateForm(false);
+    setCreateName("");
+    setCreatePlan("free");
+    setCreateError(null);
+  };
+
   return (
     <div className="rounded-xl border border-white/20 bg-white/10 p-6 backdrop-blur-sm">
-      <h2 className="text-lg font-semibold text-white">Organizations</h2>
+      <div className="flex items-center justify-between">
+        <h2 className="text-lg font-semibold text-white">Organizations</h2>
+        {!loading && !error && (
+          <button
+            type="button"
+            onClick={() => setShowCreateForm((prev) => !prev)}
+            className="rounded-xl bg-accent py-2 px-4 text-sm font-medium text-white transition-colors hover:bg-accent-hover"
+          >
+            {showCreateForm ? "Cancel" : "Create organization"}
+          </button>
+        )}
+      </div>
+
+      {showCreateForm && (
+        <div className="mt-4 rounded-xl border border-white/20 bg-white/10 p-4 backdrop-blur-sm">
+          <input
+            type="text"
+            value={createName}
+            onChange={(e) => setCreateName(e.target.value)}
+            className="mb-3 w-full rounded-lg border border-white/30 bg-black/30 px-3 py-2 text-white placeholder-white/50"
+            placeholder="Organization name"
+          />
+          <select
+            value={createPlan}
+            onChange={(e) => setCreatePlan(e.target.value as PlanType)}
+            className="mb-3 w-full rounded-lg border border-white/30 bg-black/30 px-3 py-2 text-white"
+          >
+            {PLANS.map((p) => (
+              <option key={p} value={p}>
+                {p}
+              </option>
+            ))}
+          </select>
+          {createError && (
+            <p className="mb-3 rounded-lg bg-red-500/20 p-2 text-sm text-red-100">
+              {createError}
+            </p>
+          )}
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={handleCreate}
+              disabled={creating || createName.trim() === ""}
+              className="rounded-xl bg-accent py-2 px-4 font-medium text-white transition-colors hover:bg-accent-hover disabled:opacity-50"
+            >
+              {creating ? "Creating..." : "Create"}
+            </button>
+            <button
+              type="button"
+              onClick={handleCancelCreate}
+              disabled={creating}
+              className="rounded-xl border-2 border-white/50 bg-white/10 py-2 px-4 font-medium text-white transition-colors hover:bg-white/20"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
       {loading ? (
         <p className="mt-4 text-white/80">Loading organizations...</p>
       ) : error ? (
         <p className="mt-4 rounded-lg bg-red-500/20 p-3 text-sm text-red-100">
           {error.message}
         </p>
-      ) : organizations.length === 0 ? (
+      ) : organizations.length === 0 && !showCreateForm ? (
         <p className="mt-4 text-white/80">No organizations yet.</p>
       ) : (
         <div className="mt-4 flex flex-col gap-3">
