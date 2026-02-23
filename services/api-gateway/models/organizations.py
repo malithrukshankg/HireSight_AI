@@ -10,6 +10,7 @@ import uuid
 import enum
 
 if TYPE_CHECKING:
+    from .jobs import Job
     from .recruiter_organization import RecruiterOrganization
 
 class PlanEnum(str, enum.Enum):
@@ -56,5 +57,13 @@ class Organization(Base):
         "RecruiterOrganization",
         back_populates="organization",
         foreign_keys="RecruiterOrganization.organization_id",
+        cascade="all, delete-orphan",
+    )
+
+    # Relationships (1 Organization -> many Jobs)
+    jobs: Mapped[list["Job"]] = relationship(
+        "Job",
+        back_populates="organization",
+        foreign_keys="Job.organization_id",
         cascade="all, delete-orphan",
     )

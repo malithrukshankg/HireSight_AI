@@ -8,6 +8,7 @@ from sqlalchemy.dialects.postgresql import UUID
 import uuid
 
 if TYPE_CHECKING:
+    from .jobs import Job
     from .recruiter_organization import RecruiterOrganization
 
 
@@ -46,4 +47,11 @@ class User(Base):
         back_populates="user",
         foreign_keys="RecruiterOrganization.user_id",
         cascade="all, delete-orphan",
+    )
+
+    # Relationships (1 User -> many Jobs as creator)
+    jobs: Mapped[list["Job"]] = relationship(
+        "Job",
+        back_populates="created_by_user",
+        foreign_keys="Job.created_by_user_id",
     )
