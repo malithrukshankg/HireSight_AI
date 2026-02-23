@@ -1,6 +1,7 @@
 import { useAuth0 } from "@auth0/auth0-react";
-import { useEnsureUser } from "../../hooks/useEnsureUser";
+import { JobsTile } from "../../components/ui/JobsTile";
 import { OrganizationsTile } from "../../components/ui/OrganizationsTile";
+import { useEnsureUser } from "../../hooks/useEnsureUser";
 
 export default function RecruiterDashboard() {
   const { user, getAccessTokenSilently, logout: auth0Logout } = useAuth0();
@@ -24,6 +25,10 @@ export default function RecruiterDashboard() {
 
         <div className="mt-8">
           <OrganizationsTile getToken={getAccessTokenSilently} />
+        </div>
+
+        <div className="mt-8">
+          <JobsTile getToken={getAccessTokenSilently} />
         </div>
 
         <div className="mt-8 rounded-xl border border-white/20 bg-white/10 p-6 backdrop-blur-sm">

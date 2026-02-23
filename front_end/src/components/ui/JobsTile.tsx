@@ -67,7 +67,7 @@ export function JobsTile({ getToken }: JobsTileProps) {
       ]);
       setJobs(jobsData);
       setOrganizations(orgsData);
-      setCreateOrgId((prev) => prev || orgsData[0]?.id ?? "");
+      setCreateOrgId((prev) => prev || (orgsData[0]?.id ?? ""));
     } catch (e) {
       setError(e instanceof Error ? e : new Error(String(e)));
     } finally {
