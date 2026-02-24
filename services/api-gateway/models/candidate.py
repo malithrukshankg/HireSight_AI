@@ -11,6 +11,7 @@ import uuid
 if TYPE_CHECKING:
     from .organizations import Organization
     from .user import User
+    from .cv import CV
 
 
 class Candidate(Base):
@@ -74,4 +75,12 @@ class Candidate(Base):
         "User",
         back_populates="candidates",
         foreign_keys=[user_id],
+    )
+
+    # Relationships (1 Candidate -> 1 CV; FK: cvs.candidate_id UNIQUE)
+    cv: Mapped["CV | None"] = relationship(
+        "CV",
+        back_populates="candidate",
+        foreign_keys="CV.candidate_id",
+        uselist=False,
     )
