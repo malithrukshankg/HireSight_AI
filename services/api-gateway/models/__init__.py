@@ -3,4 +3,5 @@ from .organizations import Organization
 from .recruiter_organization import RecruiterOrganization
 from .jobs import Job, JobStatusEnum
 from .candidate import Candidate
+from .cv import CV
 
