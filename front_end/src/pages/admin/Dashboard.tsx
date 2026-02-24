@@ -37,8 +37,8 @@ export default function AdminDashboard() {
   };
 
   return (
-    <main className="flex min-h-0 flex-1 flex-col overflow-auto p-6 lg:p-10">
-      <div className="mx-auto w-full max-w-7xl">
+    <main className="flex min-h-0 flex-1 flex-col p-6 lg:p-8">
+      <div className="w-full">
         {upsertError && (
           <p className="mb-4 rounded-lg bg-red-500/20 p-3 text-sm text-red-100">
             Could not sync user: {upsertError.message}
