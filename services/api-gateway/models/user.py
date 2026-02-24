@@ -10,6 +10,7 @@ import uuid
 if TYPE_CHECKING:
     from .jobs import Job
     from .recruiter_organization import RecruiterOrganization
+    from .candidate import Candidate
 
 
 class User(Base):
@@ -54,4 +55,11 @@ class User(Base):
         "Job",
         back_populates="created_by_user",
         foreign_keys="Job.created_by_user_id",
+    )
+
+    # Relationships (1 User -> many Candidates; FK: candidates.user_id, optional)
+    candidates: Mapped[list["Candidate"]] = relationship(
+        "Candidate",
+        back_populates="user",
+        foreign_keys="Candidate.user_id",
     )

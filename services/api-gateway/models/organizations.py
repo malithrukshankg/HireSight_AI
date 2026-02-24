@@ -12,6 +12,7 @@ import enum
 if TYPE_CHECKING:
     from .jobs import Job
     from .recruiter_organization import RecruiterOrganization
+    from .candidate import Candidate
 
 class PlanEnum(str, enum.Enum):
     free = "free"
@@ -65,5 +66,13 @@ class Organization(Base):
         "Job",
         back_populates="organization",
         foreign_keys="Job.organization_id",
+        cascade="all, delete-orphan",
+    )
+
+    # Relationships (1 Organization -> many Candidates; FK: candidates.organization_id)
+    candidates: Mapped[list["Candidate"]] = relationship(
+        "Candidate",
+        back_populates="organization",
+        foreign_keys="Candidate.organization_id",
         cascade="all, delete-orphan",
     )
