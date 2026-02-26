@@ -1,4 +1,5 @@
 import { useAuth0 } from "@auth0/auth0-react";
+import { CandidateJobsTile } from "../../components/ui/CandidateJobsTile";
 import { useEnsureUser } from "../../hooks/useEnsureUser";
 
 export default function CandidateDashboard() {
@@ -20,6 +21,8 @@ export default function CandidateDashboard() {
         )}
         <h1 className="text-3xl font-bold text-white">Candidate Dashboard</h1>
         <p className="mt-2 text-white/90">Logged in as {user?.email}</p>
+
+        <CandidateJobsTile getToken={getAccessTokenSilently} />
 
         <div className="mt-8 rounded-xl border border-white/20 bg-white/10 p-6 backdrop-blur-sm">
           <h2 className="text-lg font-semibold text-white">Debug</h2>
