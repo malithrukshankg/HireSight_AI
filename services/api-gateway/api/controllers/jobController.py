@@ -1,3 +1,4 @@
+from typing import Optional
 import uuid
 
 from fastapi import HTTPException
@@ -49,6 +50,9 @@ class JobController:
         offset: int = 0,
         organization_id: uuid.UUID | None = None,
         status: JobStatusEnum | None = None,
+        query: Optional[str] = None,
+        location: Optional[str] = None,
+        sort: str = "recent",
     ) -> list[Job]:
         try:
             return await self.service.list_all(
@@ -56,6 +60,9 @@ class JobController:
                 offset=offset,
                 organization_id=organization_id,
                 status=status,
+                query=query,
+                location=location,
+                sort=sort,
             )
         except ValueError as e:
             self._handle_error(e)

@@ -2,7 +2,7 @@ from typing import Any, Optional
 
 import uuid
 
-from sqlalchemy import select
+from sqlalchemy import desc, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from models import Job
@@ -51,6 +51,9 @@ class JobRepository:
         offset: int = 0,
         organization_id: Optional[uuid.UUID] = None,
         status: Optional[JobStatusEnum] = None,
+        query: Optional[str] = None,
+        location: Optional[str] = None,
+        sort: str = "recent",
     ) -> list[Job]:
         """List jobs with optional filters and pagination."""
         stmt = select(Job)
@@ -58,6 +61,18 @@ class JobRepository:
             stmt = stmt.where(Job.organization_id == organization_id)
         if status is not None:
             stmt = stmt.where(Job.status == status)
+        if query:
+            like_query = f"%{query.strip()}%"
+            stmt = stmt.where(
+                or_(
+                    Job.title.ilike(like_query),
+                    Job.description.ilike(like_query),
+                )
+            )
+        if location:
+            stmt = stmt.where(Job.location.ilike(f"%{location.strip()}%"))
+        if sort == "recent":
+            stmt = stmt.order_by(desc(Job.created_at))
         stmt = stmt.limit(limit).offset(offset)
         result = await self.db.execute(stmt)
         return list(result.scalars().all())

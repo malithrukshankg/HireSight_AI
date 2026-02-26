@@ -61,17 +61,25 @@ class JobService:
         offset: int = 0,
         organization_id: Optional[uuid.UUID] = None,
         status: Optional[JobStatusEnum] = None,
+        query: Optional[str] = None,
+        location: Optional[str] = None,
+        sort: str = "recent",
     ) -> list[Job]:
         """List jobs with optional filters and pagination."""
         if limit < 1 or limit > 500:
             raise ValueError("Limit must be between 1 and 500")
         if offset < 0:
             raise ValueError("Offset must be non-negative")
+        if sort not in ("recent",):
+            raise ValueError("Sort must be one of: recent")
         return await self.job_repo.find_all(
             limit=limit,
             offset=offset,
             organization_id=organization_id,
             status=status,
+            query=query,
+            location=location,
+            sort=sort,
         )
 
     async def list_by_creator(self, user_id: uuid.UUID) -> list[Job]:

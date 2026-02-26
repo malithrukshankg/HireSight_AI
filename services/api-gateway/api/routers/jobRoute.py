@@ -34,17 +34,24 @@ async def list_jobs(
     principal: dict = Depends(require_authenticated_user),
     organization_id: uuid.UUID | None = Query(None),
     status: JobStatusEnum | None = Query(None),
-    limit: int = Query(100, ge=1, le=500),
-    offset: int = Query(0, ge=0),
+    query: str | None = Query(None),
+    location: str | None = Query(None),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=500),
+    sort: str = Query("recent"),
 ):
     """List jobs with optional filters. Candidate can only view open jobs."""
     role = get_principal_role(principal)
     effective_status = JobStatusEnum.open if role == "candidate" else status
+    offset = (page - 1) * page_size
     return await JobController(db).list_all(
-        limit=limit,
+        limit=page_size,
         offset=offset,
         organization_id=organization_id,
         status=effective_status,
+        query=query,
+        location=location,
+        sort=sort,
     )
 
 
