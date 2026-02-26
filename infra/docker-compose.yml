@@ -42,6 +42,7 @@ services:
       CV_MAX_SIZE_MB: ${CV_MAX_SIZE_MB:-5}
       CV_PLACEHOLDER_CANDIDATE_ID: ${CV_PLACEHOLDER_CANDIDATE_ID:-00000000-0000-0000-0000-000000000001}
       CV_PLACEHOLDER_UPLOADED_BY_USER_ID: ${CV_PLACEHOLDER_UPLOADED_BY_USER_ID:-00000000-0000-0000-0000-000000000002}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000,http://localhost:5173}
       AUTH0_DOMAIN: dev-wt0zci4ynfbqzxos.us.auth0.com
       AUTH0_AUDIENCE: https://api.hiresight.local
       AUTH0_ISSUER: https://dev-wt0zci4ynfbqzxos.us.auth0.com/
@@ -51,6 +52,7 @@ services:
       AUTH0_ROLE_ID_RECRUITER: rol_TRFGELaF2kzTUEIt
     volumes:
       - ../services/api-gateway:/app
+      - ${USERPROFILE}/.aws:/root/.aws:ro
     command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
     depends_on:
       postgres:

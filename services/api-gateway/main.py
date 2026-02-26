@@ -6,9 +6,12 @@ from api.routers.organizationRoute import organizationRouter
 from api.routers.jobRoute import jobRouter
 from api.routers.cvRoute import cvRouter
 from auth.auth0 import get_current_principal
+from config import settings
 
 
 app = FastAPI(title="HireSight API Gateway", version="0.1.0")
+
+cors_origins = [origin.strip() for origin in settings.CORS_ORIGINS.split(",") if origin.strip()]
 
 
 @app.get("/health")
@@ -17,7 +20,7 @@ def health():
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],  # Vite dev; add production origin(s) as needed
+    allow_origins=cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
