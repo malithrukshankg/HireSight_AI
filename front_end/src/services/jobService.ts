@@ -29,15 +29,21 @@ export async function getJobs(
   params?: {
     organization_id?: string;
     status?: string;
-    limit?: number;
-    offset?: number;
+    page?: number;
+    page_size?: number;
+    query?: string;
+    location?: string;
+    sort?: "recent";
   }
 ): Promise<Job[]> {
   const searchParams = new URLSearchParams();
   if (params?.organization_id) searchParams.set("organization_id", params.organization_id);
   if (params?.status) searchParams.set("status", params.status);
-  if (params?.limit != null) searchParams.set("limit", String(params.limit));
-  if (params?.offset != null) searchParams.set("offset", String(params.offset));
+  if (params?.page != null) searchParams.set("page", String(params.page));
+  if (params?.page_size != null) searchParams.set("page_size", String(params.page_size));
+  if (params?.query) searchParams.set("query", params.query);
+  if (params?.location) searchParams.set("location", params.location);
+  if (params?.sort) searchParams.set("sort", params.sort);
 
   const query = searchParams.toString();
   const url = query ? `${API_BASE_URL}/jobs?${query}` : `${API_BASE_URL}/jobs`;
