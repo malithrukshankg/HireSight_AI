@@ -1,12 +1,14 @@
-from fastapi import FastAPI,Depends
+from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from api.routers.userRoute import userRouter
+
+from api.routers.cvRoute import cvRouter
+from api.routers.jobRoute import jobRouter
 from api.routers.meRoute import meRouter
 from api.routers.organizationRoute import organizationRouter
-from api.routers.jobRoute import jobRouter
-from api.routers.cvRoute import cvRouter
+from api.routers.userRoute import userRouter
 from auth.auth0 import get_current_principal
 from config import settings
+from core.redis_client import close_redis, init_redis
 
 
 app = FastAPI(title="HireSight API Gateway", version="0.1.0")
@@ -17,6 +19,16 @@ cors_origins = [origin.strip() for origin in settings.CORS_ORIGINS.split(",") if
 @app.get("/health")
 def health():
     return {"status": "ok", "service": "api-gateway"}
+
+
+@app.on_event("startup")
+async def on_startup() -> None:
+    await init_redis()
+
+
+@app.on_event("shutdown")
+async def on_shutdown() -> None:
+    await close_redis()
 
 app.add_middleware(
     CORSMiddleware,
