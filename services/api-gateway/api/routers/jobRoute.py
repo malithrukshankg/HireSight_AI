@@ -5,7 +5,11 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 
 from api.controllers.jobController import JobController
 from api.schemas.jobSchema import JobCreate, JobRead, JobUpdate
-from auth.auth0 import require_admin_or_recruiter
+from auth.auth0 import (
+    get_principal_role,
+    require_admin_or_recruiter,
+    require_authenticated_user,
+)
 from models.jobs import JobStatusEnum
 
 jobRouter = APIRouter(prefix="/jobs", tags=["jobs"])
@@ -27,18 +31,20 @@ async def create_job(
 @jobRouter.get("", response_model=list[JobRead])
 async def list_jobs(
     db: DBSession,
-    principal: dict = Depends(require_admin_or_recruiter),
+    principal: dict = Depends(require_authenticated_user),
     organization_id: uuid.UUID | None = Query(None),
     status: JobStatusEnum | None = Query(None),
     limit: int = Query(100, ge=1, le=500),
     offset: int = Query(0, ge=0),
 ):
-    """List jobs with optional filters. Admin or recruiter only."""
+    """List jobs with optional filters. Candidate can only view open jobs."""
+    role = get_principal_role(principal)
+    effective_status = JobStatusEnum.open if role == "candidate" else status
     return await JobController(db).list_all(
         limit=limit,
         offset=offset,
         organization_id=organization_id,
-        status=status,
+        status=effective_status,
     )
 
 
@@ -58,10 +64,14 @@ async def list_my_jobs(
 async def get_job(
     id: uuid.UUID,
     db: DBSession,
-    principal: dict = Depends(require_admin_or_recruiter),
+    principal: dict = Depends(require_authenticated_user),
 ):
-    """Get a job by ID. Admin or recruiter only."""
-    return await JobController(db).get_by_id(id)
+    """Get a job by ID. Candidate can only view open jobs."""
+    job = await JobController(db).get_by_id(id)
+    role = get_principal_role(principal)
+    if role == "candidate" and job.status != JobStatusEnum.open:
+        raise HTTPException(status_code=404, detail="Job not found")
+    return job
 
 
 @jobRouter.patch("/{id}", response_model=JobRead)

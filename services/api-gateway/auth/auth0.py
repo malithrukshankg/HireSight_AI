@@ -138,3 +138,21 @@ async def require_admin_or_recruiter(
             detail="Forbidden. Admin or recruiter role required.",
         )
     return principal
+
+
+async def require_authenticated_user(
+    principal: dict = Depends(get_current_principal),
+) -> dict:
+    """
+    FastAPI dependency: requires an authenticated user with a known role.
+    Allowed roles: admin, recruiter, candidate.
+    """
+    role = _extract_role(principal)
+    if role not in ("admin", "recruiter", "candidate"):
+        raise HTTPException(status_code=403, detail="Forbidden.")
+    return principal
+
+
+def get_principal_role(principal: dict) -> str:
+    """Public helper for route-level role-aware behavior."""
+    return _extract_role(principal)
