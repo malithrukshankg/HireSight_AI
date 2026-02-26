@@ -79,6 +79,9 @@ class CvService:
                 ExtraArgs={"ContentType": content_type},
             )
         except (BotoCoreError, ClientError, Exception) as e:
+            print(e)
+            print(settings.S3_BUCKET)
+            print(s3_key)
             raise CVS3UploadError("Failed to upload file to S3") from e
 
         try:

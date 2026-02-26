@@ -22,9 +22,9 @@ class CVRepository:
         file_type: str,
         s3_key: str,
     ) -> CV:
-        result = await self.db.execute(select(CV).where(CV.candidate_id == candidate_id))
-        existing = result.scalar_one_or_none()
-
+        # result = await self.db.execute(select(CV).where(CV.candidate_id == candidate_id))
+        # existing = result.scalar_one_or_none()
+        existing = None
         if existing is None:
             cv = CV(
                 candidate_id=candidate_id,

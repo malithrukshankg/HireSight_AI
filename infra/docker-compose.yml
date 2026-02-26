@@ -37,7 +37,7 @@ services:
     environment:
       DATABASE_URL: postgresql+psycopg://hiresight:hiresight@postgres:5432/hiresight
       REDIS_URL: redis://redis:6379/0
-      S3_BUCKET: ${S3_BUCKET:-hiresight-cv-uploads}
+      S3_BUCKET: ${S3_BUCKET:-hiresight-upload-cv}
       AWS_REGION: ${AWS_REGION:-ap-southeast-2}
       CV_MAX_SIZE_MB: ${CV_MAX_SIZE_MB:-5}
       CV_PLACEHOLDER_CANDIDATE_ID: ${CV_PLACEHOLDER_CANDIDATE_ID:-00000000-0000-0000-0000-000000000001}
