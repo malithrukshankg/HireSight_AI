@@ -90,7 +90,10 @@ class CvService:
         cv = await self.repo.upsert_uploaded_cv(
             candidate_id=candidate_id,
             uploaded_by_user_id=uploaded_by_user_id,
+            s3_bucket=settings.S3_BUCKET,
             original_filename=original_filename,
+            content_type=content_type,
+            size_bytes=file_size_bytes,
             file_type=file_type,
             s3_key=s3_key,
         )
