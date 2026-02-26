@@ -4,6 +4,7 @@ from api.routers.userRoute import userRouter
 from api.routers.meRoute import meRouter
 from api.routers.organizationRoute import organizationRouter
 from api.routers.jobRoute import jobRouter
+from api.routers.cvRoute import cvRouter
 from auth.auth0 import get_current_principal
 
 
@@ -36,4 +37,5 @@ app.include_router(userRouter)
 app.include_router(meRouter)
 app.include_router(organizationRouter)
 app.include_router(jobRouter)
+app.include_router(cvRouter)
 
