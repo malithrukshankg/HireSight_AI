@@ -1,3 +1,4 @@
+import logging
 import uuid
 from typing import Optional
 
@@ -16,6 +17,8 @@ from api.repositories.organizationRepository import OrganizationRepository
 from models import Job
 from models.jobs import JobStatusEnum
 
+logger = logging.getLogger(__name__)
+
 
 class JobService:
     def __init__(
@@ -28,7 +31,11 @@ class JobService:
 
     async def _bump_jobs_list_cache_version(self) -> None:
         version_key = build_version_key("jobs", "list")
-        await incr_counter(version_key)
+        next_version = await incr_counter(version_key)
+        if next_version is None:
+            logger.warning("Job cache version bump skipped (Redis unavailable)")
+            return
+        logger.debug("Job cache version bumped to %s", next_version)
 
     async def create(self, payload: JobCreate, user_id: uuid.UUID) -> Job:
         """Create a job. User must be a member of the organization."""
@@ -113,7 +120,9 @@ class JobService:
             )
             cached_payload = await get_json(cache_key)
             if isinstance(cached_payload, list):
+                logger.debug("Job list cache hit for role=%s key=%s", role, cache_key)
                 return [JobRead.model_validate(item) for item in cached_payload]
+            logger.debug("Job list cache miss for role=%s key=%s", role, cache_key)
 
         jobs = await self.job_repo.find_all(
             limit=limit,
@@ -127,11 +136,15 @@ class JobService:
         serialized_jobs = [JobRead.model_validate(job) for job in jobs]
 
         if cache_key is not None:
-            await set_json(
+            cache_written = await set_json(
                 cache_key,
                 [job.model_dump(mode="json") for job in serialized_jobs],
                 ttl_seconds=settings.JOBS_CACHE_TTL_SECONDS,
             )
+            if cache_written:
+                logger.debug("Job list cache stored key=%s ttl=%s", cache_key, settings.JOBS_CACHE_TTL_SECONDS)
+            else:
+                logger.debug("Job list cache store skipped key=%s", cache_key)
 
         return serialized_jobs
 
