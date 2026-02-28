@@ -1,9 +1,17 @@
 import uuid
 from typing import Optional
 
+from api.schemas.jobSchema import JobCreate, JobRead, JobUpdate
+from config import settings
+from core.cache_service import (
+    build_cache_key,
+    build_version_key,
+    get_counter,
+    get_json,
+    set_json,
+)
 from api.repositories.jobRepository import JobRepository
 from api.repositories.organizationRepository import OrganizationRepository
-from api.schemas.jobSchema import JobCreate, JobUpdate
 from models import Job
 from models.jobs import JobStatusEnum
 
@@ -64,7 +72,8 @@ class JobService:
         query: Optional[str] = None,
         location: Optional[str] = None,
         sort: str = "recent",
-    ) -> list[Job]:
+        role: Optional[str] = None,
+    ) -> list[JobRead]:
         """List jobs with optional filters and pagination."""
         if limit < 1 or limit > 500:
             raise ValueError("Limit must be between 1 and 500")
@@ -72,15 +81,52 @@ class JobService:
             raise ValueError("Offset must be non-negative")
         if sort not in ("recent",):
             raise ValueError("Sort must be one of: recent")
-        return await self.job_repo.find_all(
+
+        normalized_query = query.strip() if query else None
+        normalized_location = location.strip() if location else None
+        cache_key: str | None = None
+
+        if role == "candidate":
+            version_key = build_version_key("jobs", "list")
+            version = await get_counter(version_key, default=1)
+            cache_key = build_cache_key(
+                "jobs",
+                "list",
+                scope=role,
+                version=version,
+                params={
+                    "organization_id": str(organization_id) if organization_id else None,
+                    "status": status.value if status else None,
+                    "query": normalized_query,
+                    "location": normalized_location,
+                    "limit": limit,
+                    "offset": offset,
+                    "sort": sort,
+                },
+            )
+            cached_payload = await get_json(cache_key)
+            if isinstance(cached_payload, list):
+                return [JobRead.model_validate(item) for item in cached_payload]
+
+        jobs = await self.job_repo.find_all(
             limit=limit,
             offset=offset,
             organization_id=organization_id,
             status=status,
-            query=query,
-            location=location,
+            query=normalized_query,
+            location=normalized_location,
             sort=sort,
         )
+        serialized_jobs = [JobRead.model_validate(job) for job in jobs]
+
+        if cache_key is not None:
+            await set_json(
+                cache_key,
+                [job.model_dump(mode="json") for job in serialized_jobs],
+                ttl_seconds=settings.JOBS_CACHE_TTL_SECONDS,
+            )
+
+        return serialized_jobs
 
     async def list_by_creator(self, user_id: uuid.UUID) -> list[Job]:
         """List jobs created by a user (recruiter)."""

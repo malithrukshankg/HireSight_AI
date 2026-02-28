@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from api.repositories.jobRepository import JobRepository
 from api.repositories.organizationRepository import OrganizationRepository
 from api.repositories.userRepository import UserRepository
-from api.schemas.jobSchema import JobCreate, JobUpdate
+from api.schemas.jobSchema import JobCreate, JobRead, JobUpdate
 from api.services.jobService import JobService
 from models import Job
 from models.jobs import JobStatusEnum
@@ -53,7 +53,8 @@ class JobController:
         query: Optional[str] = None,
         location: Optional[str] = None,
         sort: str = "recent",
-    ) -> list[Job]:
+        role: Optional[str] = None,
+    ) -> list[JobRead]:
         try:
             return await self.service.list_all(
                 limit=limit,
@@ -63,6 +64,7 @@ class JobController:
                 query=query,
                 location=location,
                 sort=sort,
+                role=role,
             )
         except ValueError as e:
             self._handle_error(e)

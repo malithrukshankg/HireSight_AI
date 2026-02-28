@@ -16,6 +16,7 @@ class Settings(BaseSettings):
     REDIS_URL: str = "redis://localhost:6379/0"
     REDIS_DEFAULT_TTL_SECONDS: int = 120
     REDIS_KEY_PREFIX: str = "hiresight"
+    JOBS_CACHE_TTL_SECONDS: int = 120
 
 
 settings = Settings()

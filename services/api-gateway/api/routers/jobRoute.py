@@ -52,6 +52,7 @@ async def list_jobs(
         query=query,
         location=location,
         sort=sort,
+        role=role,
     )
 
 
