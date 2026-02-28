@@ -8,6 +8,7 @@ from core.cache_service import (
     build_version_key,
     get_counter,
     get_json,
+    incr_counter,
     set_json,
 )
 from api.repositories.jobRepository import JobRepository
@@ -24,6 +25,10 @@ class JobService:
     ):
         self.job_repo = job_repo
         self.org_repo = org_repo
+
+    async def _bump_jobs_list_cache_version(self) -> None:
+        version_key = build_version_key("jobs", "list")
+        await incr_counter(version_key)
 
     async def create(self, payload: JobCreate, user_id: uuid.UUID) -> Job:
         """Create a job. User must be a member of the organization."""
@@ -45,7 +50,7 @@ class JobService:
         if not (payload.employment_type or "").strip():
             raise ValueError("Job employment type is required and cannot be empty")
 
-        return await self.job_repo.create(
+        job = await self.job_repo.create(
             organization_id=payload.organization_id,
             created_by_user_id=user_id,
             title=title,
@@ -55,6 +60,8 @@ class JobService:
             status=payload.status,
             requirements_json=payload.requirements_json,
         )
+        await self._bump_jobs_list_cache_version()
+        return job
 
     async def get_by_id(self, id: uuid.UUID) -> Job:
         """Get a job by ID. Raises ValueError if not found."""
@@ -171,7 +178,9 @@ class JobService:
             kwargs["requirements_json"] = payload.requirements_json
 
         if kwargs:
-            return await self.job_repo.update(job, **kwargs)
+            updated_job = await self.job_repo.update(job, **kwargs)
+            await self._bump_jobs_list_cache_version()
+            return updated_job
         return job
 
     async def delete(self, id: uuid.UUID, user_id: uuid.UUID) -> None:
@@ -185,3 +194,4 @@ class JobService:
             raise ValueError("User is not a member of this organization")
 
         await self.job_repo.delete(job)
+        await self._bump_jobs_list_cache_version()
