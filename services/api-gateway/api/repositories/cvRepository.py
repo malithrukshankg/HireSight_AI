@@ -10,6 +10,10 @@ class CVRepository:
     def __init__(self, db: AsyncSession):
         self.db = db
 
+    async def find_by_candidate_id(self, candidate_id: uuid.UUID) -> CV | None:
+        result = await self.db.execute(select(CV).where(CV.candidate_id == candidate_id))
+        return result.scalar_one_or_none()
+
     async def upsert_uploaded_cv(
         self,
         *,
@@ -22,9 +26,7 @@ class CVRepository:
         file_type: str,
         s3_key: str,
     ) -> CV:
-        # result = await self.db.execute(select(CV).where(CV.candidate_id == candidate_id))
-        # existing = result.scalar_one_or_none()
-        existing = None
+        existing = await self.find_by_candidate_id(candidate_id)
         if existing is None:
             cv = CV(
                 candidate_id=candidate_id,
