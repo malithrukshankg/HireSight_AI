@@ -1,5 +1,11 @@
 import { API_BASE_URL } from "../utils/config";
-import type { Job, JobCreate, JobUpdate } from "../types/job";
+import type {
+  Job,
+  JobApplyPayload,
+  JobApplyResponse,
+  JobCreate,
+  JobUpdate,
+} from "../types/job";
 
 /**
  * Fetch jobs created by the current user (recruiter).
@@ -185,4 +191,39 @@ export async function deleteJob(
         `Delete job failed: ${response.status}`
     );
   }
+}
+
+export async function applyToJob(
+  accessToken: string,
+  id: string,
+  payload: JobApplyPayload
+): Promise<JobApplyResponse> {
+  const formData = new FormData();
+  formData.append("full_name", payload.full_name);
+  formData.append("email", payload.email);
+  if (payload.phone && payload.phone.trim() !== "") {
+    formData.append("phone", payload.phone.trim());
+  }
+  if (payload.cv_file) {
+    formData.append("cv_file", payload.cv_file);
+  }
+
+  const response = await fetch(`${API_BASE_URL}/jobs/${id}/apply`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: formData,
+  });
+
+  if (!response.ok) {
+    const err = await response
+      .json()
+      .catch(() => ({ detail: response.statusText }));
+    throw new Error(
+      (err as { detail?: string }).detail || `Apply failed: ${response.status}`
+    );
+  }
+
+  return response.json() as Promise<JobApplyResponse>;
 }

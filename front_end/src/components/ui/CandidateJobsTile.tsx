@@ -8,10 +8,17 @@ const PAGE_SIZE = 20;
 
 export type CandidateJobsTileProps = {
   getToken: () => Promise<string>;
-  onSelectJob?: (job: Job) => void;
+  onApplyJob?: (job: Job) => void;
+  applyingJobId?: string | null;
+  appliedJobIds?: string[];
 };
 
-export function CandidateJobsTile({ getToken, onSelectJob }: CandidateJobsTileProps) {
+export function CandidateJobsTile({
+  getToken,
+  onApplyJob,
+  applyingJobId = null,
+  appliedJobIds = [],
+}: CandidateJobsTileProps) {
   const [queryInput, setQueryInput] = useState("");
   const [locationInput, setLocationInput] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
@@ -164,13 +171,18 @@ export function CandidateJobsTile({ getToken, onSelectJob }: CandidateJobsTilePr
                     {job.location} · {job.employment_type}
                   </p>
                 </div>
-                {onSelectJob && (
+                {onApplyJob && (
                   <button
                     type="button"
-                    onClick={() => onSelectJob(job)}
-                    className="rounded-lg bg-accent px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-accent-hover"
+                    disabled={applyingJobId === job.id || appliedJobIds.includes(job.id)}
+                    onClick={() => onApplyJob(job)}
+                    className="rounded-lg bg-accent px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-60"
                   >
-                    View Details
+                    {appliedJobIds.includes(job.id)
+                      ? "Applied"
+                      : applyingJobId === job.id
+                        ? "Applying..."
+                        : "Apply"}
                   </button>
                 )}
               </div>

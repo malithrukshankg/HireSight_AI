@@ -32,3 +32,17 @@ export type JobUpdate = {
   status?: JobStatus;
   requirements_json?: Record<string, unknown>;
 };
+
+export type JobApplyPayload = {
+  full_name: string;
+  email: string;
+  phone?: string;
+  cv_file?: File;
+};
+
+export type JobApplyResponse = {
+  job_id: string;
+  candidate_id: string;
+  cv_id: string;
+  message: string;
+};
