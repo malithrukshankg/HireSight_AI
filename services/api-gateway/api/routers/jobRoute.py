@@ -1,10 +1,10 @@
 import uuid
 
 from database import DBSession
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
 
 from api.controllers.jobController import JobController
-from api.schemas.jobSchema import JobCreate, JobRead, JobUpdate
+from api.schemas.jobSchema import JobApplyResponse, JobCreate, JobRead, JobUpdate
 from auth.auth0 import (
     get_principal_role,
     require_admin_or_recruiter,
@@ -80,6 +80,33 @@ async def get_job(
     if role == "candidate" and job.status != JobStatusEnum.open:
         raise HTTPException(status_code=404, detail="Job not found")
     return job
+
+
+@jobRouter.post("/{id}/apply", response_model=JobApplyResponse, status_code=201)
+async def apply_job(
+    id: uuid.UUID,
+    db: DBSession,
+    full_name: str = Form(...),
+    email: str = Form(...),
+    phone: str | None = Form(None),
+    cv_file: UploadFile | None = File(None),
+    principal: dict = Depends(require_authenticated_user),
+):
+    """Apply to an open job by upserting candidate and CV records."""
+    role = get_principal_role(principal)
+    if role != "candidate":
+        raise HTTPException(status_code=403, detail="Only candidates can apply to jobs")
+    auth0_sub = principal.get("sub")
+    if not auth0_sub:
+        raise HTTPException(status_code=400, detail="auth0_sub not found in token")
+    return await JobController(db).apply(
+        job_id=id,
+        auth0_sub=auth0_sub,
+        email=email,
+        full_name=full_name,
+        phone=phone,
+        cv_file=cv_file,
+    )
 
 
 @jobRouter.patch("/{id}", response_model=JobRead)
