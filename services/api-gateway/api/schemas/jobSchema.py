@@ -47,3 +47,10 @@ class JobRead(BaseModel):
     updated_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+class JobApplyResponse(BaseModel):
+    job_id: uuid.UUID
+    candidate_id: uuid.UUID
+    cv_id: uuid.UUID
+    message: str
