@@ -1,13 +1,15 @@
 from typing import Optional
 import uuid
 
-from fastapi import HTTPException
+from fastapi import HTTPException, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from api.repositories.candidateRepository import CandidateRepository
+from api.repositories.cvRepository import CVRepository
 from api.repositories.jobRepository import JobRepository
 from api.repositories.organizationRepository import OrganizationRepository
 from api.repositories.userRepository import UserRepository
-from api.schemas.jobSchema import JobCreate, JobRead, JobUpdate
+from api.schemas.jobSchema import JobApplyResponse, JobCreate, JobRead, JobUpdate
 from api.services.jobService import JobService
 from models import Job
 from models.jobs import JobStatusEnum
@@ -18,7 +20,14 @@ class JobController:
         self.db = db
         self.job_repo = JobRepository(db)
         self.org_repo = OrganizationRepository(db)
-        self.service = JobService(self.job_repo, self.org_repo)
+        self.candidate_repo = CandidateRepository(db)
+        self.cv_repo = CVRepository(db)
+        self.service = JobService(
+            self.job_repo,
+            self.org_repo,
+            self.candidate_repo,
+            self.cv_repo,
+        )
 
     def _handle_error(self, e: ValueError) -> None:
         msg = str(e).lower()
@@ -101,5 +110,32 @@ class JobController:
             raise HTTPException(status_code=404, detail="User not found")
         try:
             await self.service.delete(id, user_id=user.id)
+        except ValueError as e:
+            self._handle_error(e)
+
+    async def apply(
+        self,
+        *,
+        job_id: uuid.UUID,
+        auth0_sub: str,
+        email: str,
+        full_name: str,
+        phone: str | None,
+        cv_file: UploadFile | None,
+    ) -> JobApplyResponse:
+        user_repo = UserRepository(self.db)
+        user = await user_repo.find_by_auth0_sub(auth0_sub)
+        if user is None:
+            raise HTTPException(status_code=404, detail="User not found")
+        try:
+            result = await self.service.apply(
+                job_id=job_id,
+                user_id=user.id,
+                email=email,
+                full_name=full_name,
+                phone=phone,
+                cv_file=cv_file,
+            )
+            return JobApplyResponse.model_validate(result)
         except ValueError as e:
             self._handle_error(e)
