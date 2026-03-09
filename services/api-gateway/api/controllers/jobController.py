@@ -1,11 +1,12 @@
 from typing import Optional
 import uuid
 
+import httpx
 from fastapi import HTTPException, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from api.clients.cv_client import CvClient
 from api.repositories.candidateRepository import CandidateRepository
-from api.repositories.cvRepository import CVRepository
 from api.repositories.jobRepository import JobRepository
 from api.repositories.organizationRepository import OrganizationRepository
 from api.repositories.userRepository import UserRepository
@@ -21,12 +22,12 @@ class JobController:
         self.job_repo = JobRepository(db)
         self.org_repo = OrganizationRepository(db)
         self.candidate_repo = CandidateRepository(db)
-        self.cv_repo = CVRepository(db)
+        self.cv_client = CvClient()
         self.service = JobService(
             self.job_repo,
             self.org_repo,
             self.candidate_repo,
-            self.cv_repo,
+            self.cv_client,
         )
 
     def _handle_error(self, e: ValueError) -> None:
@@ -137,5 +138,11 @@ class JobController:
                 cv_file=cv_file,
             )
             return JobApplyResponse.model_validate(result)
+        except httpx.HTTPStatusError as e:
+            try:
+                detail = e.response.json().get("detail", str(e)) if e.response.text else str(e)
+            except Exception:
+                detail = e.response.text or str(e)
+            raise HTTPException(status_code=e.response.status_code, detail=detail)
         except ValueError as e:
             self._handle_error(e)

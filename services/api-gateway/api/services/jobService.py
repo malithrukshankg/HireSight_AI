@@ -1,15 +1,11 @@
 import logging
 import uuid
-from pathlib import Path
-import re
 from typing import Optional
 
-import boto3
-from botocore.exceptions import BotoCoreError, ClientError
 from fastapi import UploadFile
 
+from api.clients.cv_client import CvClient
 from api.repositories.candidateRepository import CandidateRepository
-from api.repositories.cvRepository import CVRepository
 from api.schemas.jobSchema import JobCreate, JobRead, JobUpdate
 from config import settings
 from core.cache_service import (
@@ -34,78 +30,12 @@ class JobService:
         job_repo: JobRepository,
         org_repo: OrganizationRepository,
         candidate_repo: CandidateRepository | None = None,
-        cv_repo: CVRepository | None = None,
+        cv_client: CvClient | None = None,
     ):
         self.job_repo = job_repo
         self.org_repo = org_repo
         self.candidate_repo = candidate_repo
-        self.cv_repo = cv_repo
-        self.s3_client = boto3.client("s3", region_name=settings.AWS_REGION)
-
-    def _sanitize_filename(self, filename: str) -> str:
-        name = Path(filename).name.strip()
-        if not name:
-            raise ValueError("Filename is required")
-        return re.sub(r"[^A-Za-z0-9._-]", "_", name)
-
-    def _resolve_file_size(self, upload: UploadFile) -> int | None:
-        stream = upload.file
-        try:
-            current = stream.tell()
-            stream.seek(0, 2)
-            size = stream.tell()
-            stream.seek(current)
-            return int(size)
-        except Exception:
-            return None
-
-    async def _upload_cv_for_candidate(
-        self,
-        *,
-        candidate_id: uuid.UUID,
-        uploaded_by_user_id: uuid.UUID,
-        file: UploadFile,
-    ):
-        allowed_content_types = {
-            "application/pdf": "pdf",
-            "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "docx",
-        }
-        content_type = (file.content_type or "").strip().lower()
-        file_type = allowed_content_types.get(content_type)
-        if file_type is None:
-            allowed = ", ".join(sorted(allowed_content_types.keys()))
-            raise ValueError(f"Unsupported content type. Allowed: {allowed}")
-
-        original_filename = self._sanitize_filename(file.filename or "")
-        file_size_bytes = self._resolve_file_size(file)
-        max_size_bytes = settings.CV_MAX_SIZE_MB * 1024 * 1024
-        if file_size_bytes is not None and file_size_bytes > max_size_bytes:
-            raise ValueError(f"File too large. Max allowed size is {settings.CV_MAX_SIZE_MB}MB")
-
-        s3_key = f"cvs/{uuid.uuid4()}-{original_filename}"
-        try:
-            file.file.seek(0)
-            self.s3_client.upload_fileobj(
-                file.file,
-                settings.S3_BUCKET,
-                s3_key,
-                ExtraArgs={"ContentType": content_type},
-            )
-        except (BotoCoreError, ClientError, Exception) as e:
-            raise ValueError("Failed to upload CV file to S3") from e
-
-        if self.cv_repo is None:
-            raise ValueError("CV repository is not configured")
-        return await self.cv_repo.upsert_uploaded_cv(
-            candidate_id=candidate_id,
-            uploaded_by_user_id=uploaded_by_user_id,
-            s3_bucket=settings.S3_BUCKET,
-            original_filename=original_filename,
-            content_type=content_type,
-            size_bytes=file_size_bytes,
-            file_type=file_type,
-            s3_key=s3_key,
-        )
+        self.cv_client = cv_client
 
     async def _bump_jobs_list_cache_version(self) -> None:
         version_key = build_version_key("jobs", "list")
@@ -297,8 +227,8 @@ class JobService:
         phone: str | None,
         cv_file: UploadFile | None,
     ):
-        if self.candidate_repo is None or self.cv_repo is None:
-            raise ValueError("Candidate/CV repositories are not configured")
+        if self.candidate_repo is None or self.cv_client is None:
+            raise ValueError("Candidate/CV services are not configured")
 
         job = await self.job_repo.find_by_id(job_id)
         if job is None:
@@ -336,19 +266,21 @@ class JobService:
             )
 
         if cv_file is not None:
-            cv = await self._upload_cv_for_candidate(
-                candidate_id=candidate.id,
-                uploaded_by_user_id=user_id,
+            cv_response = await self.cv_client.upload_for_candidate(
                 file=cv_file,
+                candidate_id=candidate.id,
+                user_id=user_id,
             )
+            cv_id = uuid.UUID(cv_response["id"])
         else:
-            cv = await self.cv_repo.find_by_candidate_id(candidate.id)
-            if cv is None:
+            cv_response = await self.cv_client.get_by_candidate_id(candidate.id)
+            if cv_response is None:
                 raise ValueError("CV is required. Please upload a CV to apply.")
+            cv_id = uuid.UUID(cv_response["id"])
 
         return {
             "job_id": job.id,
             "candidate_id": candidate.id,
-            "cv_id": cv.id,
+            "cv_id": cv_id,
             "message": "Application details saved successfully",
         }
