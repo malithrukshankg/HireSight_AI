@@ -12,3 +12,14 @@ class CVUploadResponse(BaseModel):
     content_type: str
     file_size_bytes: int | None = None
     created_at: datetime
+
+
+class CVByCandidateResponse(BaseModel):
+    id: uuid.UUID
+    candidate_id: uuid.UUID
+    s3_key: str
+    bucket: str
+    original_filename: str
+    content_type: str
+    file_size_bytes: int | None = None
+    created_at: datetime

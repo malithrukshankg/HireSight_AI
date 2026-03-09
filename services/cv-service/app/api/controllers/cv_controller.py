@@ -1,7 +1,10 @@
+import uuid
+
 from fastapi import HTTPException, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.repositories.cv_repository import CVRepository
+from app.api.schemas.cv_schema import CVByCandidateResponse
 from app.api.services.cv_service import CVS3UploadError, CVValidationError, CvService
 
 
@@ -17,3 +20,36 @@ class CvController:
             raise HTTPException(status_code=400, detail=str(e))
         except CVS3UploadError as e:
             raise HTTPException(status_code=500, detail=str(e))
+
+    async def upload_cv_for_candidate(
+        self,
+        *,
+        file: UploadFile,
+        candidate_id: uuid.UUID,
+        uploaded_by_user_id: uuid.UUID,
+    ) -> dict:
+        try:
+            return await self.service.upload_cv_for_candidate(
+                file=file,
+                candidate_id=candidate_id,
+                uploaded_by_user_id=uploaded_by_user_id,
+            )
+        except CVValidationError as e:
+            raise HTTPException(status_code=400, detail=str(e))
+        except CVS3UploadError as e:
+            raise HTTPException(status_code=500, detail=str(e))
+
+    async def get_by_candidate_id(self, candidate_id: uuid.UUID) -> CVByCandidateResponse:
+        cv = await self.repo.find_by_candidate_id(candidate_id)
+        if cv is None:
+            raise HTTPException(status_code=404, detail="CV not found for candidate")
+        return CVByCandidateResponse(
+            id=cv.id,
+            candidate_id=cv.candidate_id,
+            s3_key=cv.s3_key or "",
+            bucket=cv.s3_bucket or "",
+            original_filename=cv.original_filename or "",
+            content_type=cv.content_type or "",
+            file_size_bytes=cv.size_bytes,
+            created_at=cv.created_at,
+        )
