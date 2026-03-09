@@ -29,6 +29,32 @@ services:
       timeout: 3s
       retries: 10
 
+  cv-service:
+    build: ../services/cv-service
+    container_name: hiresight-cv-service
+    ports:
+      - "8001:8001"
+    environment:
+      DATABASE_URL: postgresql+psycopg://hiresight:hiresight@postgres:5432/hiresight
+      S3_BUCKET: ${S3_BUCKET:-hiresight-upload-cv}
+      AWS_REGION: ${AWS_REGION:-ap-southeast-2}
+      CV_MAX_SIZE_MB: ${CV_MAX_SIZE_MB:-5}
+      CV_PLACEHOLDER_CANDIDATE_ID: ${CV_PLACEHOLDER_CANDIDATE_ID:-00000000-0000-0000-0000-000000000001}
+      CV_PLACEHOLDER_UPLOADED_BY_USER_ID: ${CV_PLACEHOLDER_UPLOADED_BY_USER_ID:-00000000-0000-0000-0000-000000000002}
+    volumes:
+      - ../services/cv-service:/app
+      - ${USERPROFILE}/.aws:/root/.aws:ro
+    command: uvicorn main:app --host 0.0.0.0 --port 8001 --reload
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8001/health')\""]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
   api-gateway:
     build: ../services/api-gateway
     container_name: hiresight-api-gateway
@@ -37,11 +63,7 @@ services:
     environment:
       DATABASE_URL: postgresql+psycopg://hiresight:hiresight@postgres:5432/hiresight
       REDIS_URL: redis://redis:6379/0
-      S3_BUCKET: ${S3_BUCKET:-hiresight-upload-cv}
-      AWS_REGION: ${AWS_REGION:-ap-southeast-2}
-      CV_MAX_SIZE_MB: ${CV_MAX_SIZE_MB:-5}
-      CV_PLACEHOLDER_CANDIDATE_ID: ${CV_PLACEHOLDER_CANDIDATE_ID:-00000000-0000-0000-0000-000000000001}
-      CV_PLACEHOLDER_UPLOADED_BY_USER_ID: ${CV_PLACEHOLDER_UPLOADED_BY_USER_ID:-00000000-0000-0000-0000-000000000002}
+      CV_SERVICE_URL: http://cv-service:8001
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000,http://localhost:5173}
       AUTH0_DOMAIN: dev-wt0zci4ynfbqzxos.us.auth0.com
       AUTH0_AUDIENCE: https://api.hiresight.local
@@ -52,12 +74,13 @@ services:
       AUTH0_ROLE_ID_RECRUITER: rol_TRFGELaF2kzTUEIt
     volumes:
       - ../services/api-gateway:/app
-      - ${USERPROFILE}/.aws:/root/.aws:ro
     command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
     depends_on:
       postgres:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      cv-service:
         condition: service_healthy
 
 
