@@ -26,6 +26,8 @@ This is a production-grade system. Architectural integrity is mandatory.
   - Routing
   - Middleware (logging, rate limiting)
 - The API Gateway must NOT contain business logic.
+- Gateway proxies to internal services via HTTP clients (e.g. `api/clients/cv_client.py`).
+- Gateway does not contain S3, CV storage, or service-owned business logic; it forwards and delegates.
 
 ---
 
@@ -53,6 +55,8 @@ This is a production-grade system. Architectural integrity is mandatory.
 - For Auth0 users:
   - Do NOT introduce password-based login.
   - `auth0_sub` remains the primary identity reference.
+- When a service shares a database with others, set `version_table` in `alembic/env.py` to a unique name (e.g. `cv_alembic_version`) to avoid revision conflicts.
+- SQLAlchemy `__table_args__` tuple: constraints first, options dict (e.g. `{"schema": "..."}`) last.
 
 ---
 

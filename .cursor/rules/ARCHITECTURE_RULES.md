@@ -33,6 +33,12 @@ The API Gateway is the only public entry point.
   - Events (future)
   - Message broker (future)
 
+**Database layout (shared PostgreSQL):**
+
+- One database, one database user (no per-service roles).
+- Schema-per-service: `public` (api-gateway), `cv_schema` (cv-service), etc.
+- No cross-schema foreign keys. Store external entity IDs (e.g. `candidate_id`) as plain UUID columns — logical references only. Referential validation at application level via API calls.
+
 ### 2.2 API Gateway Responsibilities
 
 The API Gateway is responsible for:
@@ -84,9 +90,10 @@ Rules:
 
 ### 3.5 CV Processing
 
-- CV upload is handled by the CV service.
-- Extracted data and embeddings are stored.
-- File storage (S3 or equivalent) is external to the core database.
+- CV upload and storage are handled by the **cv-service** (`services/cv-service/`).
+- api-gateway proxies CV requests to cv-service via HTTP (CvClient).
+- cv-service owns `cv_schema.cvs`; S3 storage is configured in cv-service.
+- Internal cv-service endpoints (`/internal/*`) are not exposed publicly (port not published).
 
 ### 3.6 Interview and Scoring
 
@@ -123,7 +130,25 @@ Rules:
 
 ---
 
-## 7. Non-Negotiable Safety Rules
+## 7. Internal Service Communication
+
+- Internal services (e.g. cv-service) are reachable only from the API Gateway on the Docker network.
+- Do not publish internal service ports to the host unless required for debugging.
+- Gateway calls internal services via `{SERVICE}_URL` (e.g. `CV_SERVICE_URL`).
+- Optional: shared API key header (`X-Internal-Api-Key`) for defense in depth on internal routes.
+
+---
+
+## 8. Migrations and Alembic
+
+- Each service has its own Alembic under `services/{service}/alembic/`.
+- When multiple services share one database, each service must use a distinct `version_table` in `alembic/env.py` to avoid conflicts (e.g. `cv_alembic_version` for cv-service).
+- Migration files must never be auto-deleted or rewritten.
+- SQLAlchemy models: when `__table_args__` is a tuple with schema and constraints, the options dict (e.g. `{"schema": "cv_schema"}`) must be the **last** element.
+
+---
+
+## 9. Non-Negotiable Safety Rules
 
 The following actions require explicit approval:
 
