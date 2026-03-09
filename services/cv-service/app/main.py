@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 
-from app.api.routes.cv_route import cv_router
+from app.api.routes.cv_route import cv_router, internal_router
 
 app = FastAPI(title="HireSight CV Service", version="0.1.0")
 
@@ -11,3 +11,4 @@ def health():
 
 
 app.include_router(cv_router)
+app.include_router(internal_router)
