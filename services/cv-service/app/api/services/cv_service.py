@@ -48,9 +48,10 @@ class CvService:
         except Exception:
             return None
 
-    async def upload_cv(self, file: UploadFile, principal: dict) -> dict:
-        _ = principal  # keep dependency contract for future user-aware keys
-
+    def _validate_and_upload_to_s3(
+        self, file: UploadFile
+    ) -> tuple[str, str, str, str, int | None, str]:
+        """Validate file and upload to S3. Returns (original_filename, content_type, s3_key, file_type, size_bytes)."""
         if file is None:
             raise CVValidationError("No file provided")
 
@@ -81,11 +82,53 @@ class CvService:
         except (BotoCoreError, ClientError, Exception) as e:
             raise CVS3UploadError("Failed to upload file to S3") from e
 
+        return original_filename, content_type, s3_key, file_type, file_size_bytes
+
+    async def upload_cv(self, file: UploadFile, principal: dict) -> dict:
+        _ = principal  # keep dependency contract for future user-aware keys
+
+        original_filename, content_type, s3_key, file_type, file_size_bytes = (
+            self._validate_and_upload_to_s3(file)
+        )
+
         try:
             candidate_id = uuid.UUID(settings.CV_PLACEHOLDER_CANDIDATE_ID)
             uploaded_by_user_id = uuid.UUID(settings.CV_PLACEHOLDER_UPLOADED_BY_USER_ID)
         except ValueError as e:
             raise CVValidationError("Invalid placeholder UUID configuration") from e
+
+        cv = await self.repo.upsert_uploaded_cv(
+            candidate_id=candidate_id,
+            uploaded_by_user_id=uploaded_by_user_id,
+            s3_bucket=settings.S3_BUCKET,
+            original_filename=original_filename,
+            content_type=content_type,
+            size_bytes=file_size_bytes,
+            file_type=file_type,
+            s3_key=s3_key,
+        )
+
+        return {
+            "id": cv.id,
+            "s3_key": s3_key,
+            "bucket": settings.S3_BUCKET,
+            "original_filename": original_filename,
+            "content_type": content_type,
+            "file_size_bytes": file_size_bytes,
+            "created_at": cv.created_at or datetime.now(timezone.utc),
+        }
+
+    async def upload_cv_for_candidate(
+        self,
+        *,
+        file: UploadFile,
+        candidate_id: uuid.UUID,
+        uploaded_by_user_id: uuid.UUID,
+    ) -> dict:
+        """Upload CV for a specific candidate (job apply flow)."""
+        original_filename, content_type, s3_key, file_type, file_size_bytes = (
+            self._validate_and_upload_to_s3(file)
+        )
 
         cv = await self.repo.upsert_uploaded_cv(
             candidate_id=candidate_id,
