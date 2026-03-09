@@ -32,8 +32,7 @@ services:
   cv-service:
     build: ../services/cv-service
     container_name: hiresight-cv-service
-    ports:
-      - "8001:8001"
+    # Port 8001 not published; internal routes reachable only by api-gateway
     environment:
       DATABASE_URL: postgresql+psycopg://hiresight:hiresight@postgres:5432/hiresight
       S3_BUCKET: ${S3_BUCKET:-hiresight-upload-cv}
