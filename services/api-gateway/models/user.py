@@ -11,7 +11,6 @@ if TYPE_CHECKING:
     from .jobs import Job
     from .recruiter_organization import RecruiterOrganization
     from .candidate import Candidate
-    from .cv import CV
 
 
 class User(Base):
@@ -63,11 +62,4 @@ class User(Base):
         "Candidate",
         back_populates="user",
         foreign_keys="Candidate.user_id",
-    )
-
-    # Relationships (1 User -> many CVs uploaded; FK: cvs.uploaded_by_user_id)
-    uploaded_cvs: Mapped[list["CV"]] = relationship(
-        "CV",
-        back_populates="uploaded_by_user",
-        foreign_keys="CV.uploaded_by_user_id",
     )
