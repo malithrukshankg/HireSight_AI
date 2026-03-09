@@ -15,11 +15,11 @@ class CV(Base):
     __tablename__ = "cvs"
 
     __table_args__ = (
-        {"schema": "cv_schema"},
         CheckConstraint(
             "file_type IN ('pdf', 'docx')",
             name="ck_cvs_file_type",
         ),
+        {"schema": "cv_schema"},
     )
 
     id: Mapped[uuid.UUID] = mapped_column(
