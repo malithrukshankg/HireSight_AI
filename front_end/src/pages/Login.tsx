@@ -42,7 +42,7 @@ export default function Login() {
       {/* Left panel - Welcome message */}
       <section className="flex min-h-0 flex-col justify-center overflow-hidden p-8 lg:p-16">
         <div className="mx-auto w-full max-w-lg">
-          <h1 className="text-4xl font-bold text-white lg:text-5xl">Welcome Back</h1>
+          <h1 className="text-4xl font-bold text-white lg:text-5xl">Welcome Back v2</h1>
           <p className="mt-4 text-lg leading-relaxed text-white/90">
             Connect with opportunities that match your skills. HireSight helps candidates find the right roles and recruiters discover top talent.
           </p>
