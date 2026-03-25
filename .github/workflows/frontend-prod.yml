@@ -32,6 +32,8 @@ jobs:
 
       - name: Build frontend
         run: npm run build
+        env:
+          VITE_API_URL: /api
 
       - name: Copy build files to EC2
         uses: appleboy/scp-action@v0.1.7
