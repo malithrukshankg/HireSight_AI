@@ -27,7 +27,6 @@ jobs:
       ECS_CLUSTER: ${{ secrets.CV_SERVICE_ECS_CLUSTER }}
       ECS_SERVICE: ${{ secrets.CV_SERVICE_ECS_SERVICE }}
       CONTAINER_NAME: ${{ secrets.CV_SERVICE_CONTAINER_NAME }}
-      TASK_DEFINITION_FAMILY: ${{ secrets.CV_SERVICE_TASK_DEFINITION_FAMILY }}
       DOCKERFILE_PATH: services/cv-service/Dockerfile
       BUILD_CONTEXT: services/cv-service
 
@@ -66,13 +65,27 @@ jobs:
 
           echo "image=${IMAGE_URI}" >> "$GITHUB_OUTPUT"
 
-      - name: Download current task definition
+      - name: Get task definition currently used by service
+        id: service-task-def
+        run: |
+          set -euo pipefail
+
+          TASK_DEF_ARN=$(aws ecs describe-services \
+            --cluster "${ECS_CLUSTER}" \
+            --services "${ECS_SERVICE}" \
+            --query 'services[0].taskDefinition' \
+            --output text)
+
+          echo "Current service task definition: ${TASK_DEF_ARN}"
+          echo "task_def_arn=${TASK_DEF_ARN}" >> "$GITHUB_OUTPUT"
+
+      - name: Download current service task definition
         run: |
           set -euo pipefail
 
           aws ecs describe-task-definition \
-            --task-definition "${TASK_DEFINITION_FAMILY}" \
-            --query taskDefinition \
+            --task-definition "${{ steps.service-task-def.outputs.task_def_arn }}" \
+            --query 'taskDefinition' \
             > task-definition.json
 
       - name: Prepare deployable task definition
