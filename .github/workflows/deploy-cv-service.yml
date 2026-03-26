@@ -4,8 +4,6 @@ on:
   push:
     tags:
       - "api-gateway-v*"
-    branches:
-      - prod
     paths:
       - "services/cv-service/**"
       - ".github/workflows/deploy-cv-service.yml"

@@ -4,8 +4,6 @@ on:
   push:
     tags:
       - "frontend-v*"
-    branches:
-      - prod
     paths:
       - "front_end/**"
       - ".github/workflows/frontend-prod.yml"
