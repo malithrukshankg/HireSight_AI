@@ -2,6 +2,8 @@ name: API Gateway Prod Deploy
 
 on:
   push:
+    tags:
+      - "api-gateway-v*"
     branches:
       - prod
     paths:
