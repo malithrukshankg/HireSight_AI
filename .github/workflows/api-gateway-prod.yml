@@ -4,8 +4,6 @@ on:
   push:
     tags:
       - "api-gateway-v*"
-    branches:
-      - prod
     paths:
       - "services/api-gateway/**"
       - ".github/workflows/api-gateway-prod.yml"
