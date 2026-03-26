@@ -23,12 +23,11 @@ jobs:
 
     env:
       AWS_REGION: ${{ secrets.AWS_REGION }}
-      AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
       ECR_REPOSITORY: ${{ secrets.CV_SERVICE_ECR_REPOSITORY }}
       ECS_CLUSTER: ${{ secrets.CV_SERVICE_ECS_CLUSTER }}
       ECS_SERVICE: ${{ secrets.CV_SERVICE_ECS_SERVICE }}
       CONTAINER_NAME: ${{ secrets.CV_SERVICE_CONTAINER_NAME }}
-      TASK_DEFINITION_FILE: services/cv-service/ecs-task-definition.json
+      TASK_DEFINITION_FAMILY: ${{ secrets.CV_SERVICE_TASK_DEFINITION_FAMILY }}
       DOCKERFILE_PATH: services/cv-service/Dockerfile
       BUILD_CONTEXT: services/cv-service
 
@@ -53,28 +52,52 @@ jobs:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           IMAGE_TAG: ${{ github.sha }}
         run: |
-          set -e
+          set -euo pipefail
 
-          IMAGE_URI=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          IMAGE_URI="${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG}"
+          echo "Building image: ${IMAGE_URI}"
 
           docker build \
-            -f $DOCKERFILE_PATH \
-            -t $IMAGE_URI \
-            $BUILD_CONTEXT
+            -f "${DOCKERFILE_PATH}" \
+            -t "${IMAGE_URI}" \
+            "${BUILD_CONTEXT}"
 
-          docker push $IMAGE_URI
+          docker push "${IMAGE_URI}"
 
-          echo "image=$IMAGE_URI" >> $GITHUB_OUTPUT
+          echo "image=${IMAGE_URI}" >> "$GITHUB_OUTPUT"
 
-      - name: Render ECS task definition
+      - name: Download current task definition
+        run: |
+          set -euo pipefail
+
+          aws ecs describe-task-definition \
+            --task-definition "${TASK_DEFINITION_FAMILY}" \
+            --query taskDefinition \
+            > task-definition.json
+
+      - name: Prepare deployable task definition
+        run: |
+          set -euo pipefail
+
+          jq 'del(
+                .taskDefinitionArn,
+                .revision,
+                .status,
+                .requiresAttributes,
+                .compatibilities,
+                .registeredAt,
+                .registeredBy
+              )' task-definition.json > task-definition-clean.json
+
+      - name: Render task definition with new image
         id: render-task-def
         uses: aws-actions/amazon-ecs-render-task-definition@v1
         with:
-          task-definition: ${{ env.TASK_DEFINITION_FILE }}
+          task-definition: task-definition-clean.json
           container-name: ${{ env.CONTAINER_NAME }}
           image: ${{ steps.build-image.outputs.image }}
 
-      - name: Deploy ECS task definition
+      - name: Deploy task definition to ECS service
         uses: aws-actions/amazon-ecs-deploy-task-definition@v2
         with:
           task-definition: ${{ steps.render-task-def.outputs.task-definition }}
