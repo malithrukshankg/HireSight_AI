@@ -18,7 +18,7 @@ cors_origins = [origin.strip() for origin in settings.CORS_ORIGINS.split(",") if
 
 @app.get("/health")
 def health():
-    return {"status": "Very Okay", "service": "api-gateway"}
+    return {"status": "Okay", "service": "api-gateway"}
 
 
 @app.on_event("startup")
