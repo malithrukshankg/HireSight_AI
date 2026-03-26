@@ -54,9 +54,9 @@ jobs:
       - name: Deploy on EC2
         uses: appleboy/ssh-action@v1.0.3
         with:
-          host: ${{ secrets.API_EC2_HOST }}
-          username: ${{ secrets.API_EC2_USER }}
-          key: ${{ secrets.API_EC2_SSH_KEY }}
+          host: ${{ secrets.FRONTEND_EC2_HOST }}
+          username: ${{ secrets.FRONTEND_EC2_USER }}
+          key: ${{ secrets.FRONTEND_EC2_SSH_KEY }}
           envs: AWS_REGION,ECR_REPOSITORY,IMAGE_TAG
           script: |
             set -e
