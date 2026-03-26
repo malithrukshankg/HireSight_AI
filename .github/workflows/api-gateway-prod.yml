@@ -39,10 +39,8 @@ jobs:
 
           docker build -t $ECR_REPOSITORY:$IMAGE_TAG .
           docker tag $ECR_REPOSITORY:$IMAGE_TAG $IMAGE
-          docker tag $ECR_REPOSITORY:$IMAGE_TAG $REGISTRY/$ECR_REPOSITORY:latest
 
           docker push $IMAGE
-          docker push $REGISTRY/$ECR_REPOSITORY:latest
 
       - name: Deploy on EC2
         uses: appleboy/ssh-action@v1.0.3
