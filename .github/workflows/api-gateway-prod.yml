@@ -1,0 +1,81 @@
+name: API Gateway Prod Deploy
+
+on:
+  push:
+    branches:
+      - prod
+    paths:
+      - "services/api-gateway/**"
+      - ".github/workflows/api-gateway-prod.yml"
+
+env:
+  AWS_REGION: ${{ secrets.AWS_REGION }}
+  ECR_REPOSITORY: hiresight-api-gateway
+  IMAGE_TAG: ${{ github.sha }}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Login to ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push Docker image
+        working-directory: services/api-gateway
+        run: |
+          REGISTRY=${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${AWS_REGION}.amazonaws.com
+          IMAGE=$REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+
+          docker build -t $ECR_REPOSITORY:$IMAGE_TAG .
+          docker tag $ECR_REPOSITORY:$IMAGE_TAG $IMAGE
+          docker tag $ECR_REPOSITORY:$IMAGE_TAG $REGISTRY/$ECR_REPOSITORY:latest
+
+          docker push $IMAGE
+          docker push $REGISTRY/$ECR_REPOSITORY:latest
+
+      - name: Deploy on EC2
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.API_EC2_HOST }}
+          username: ${{ secrets.API_EC2_USER }}
+          key: ${{ secrets.API_EC2_SSH_KEY }}
+          envs: AWS_REGION,ECR_REPOSITORY,IMAGE_TAG
+          script: |
+            set -e
+
+            REGISTRY=${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${AWS_REGION}.amazonaws.com
+            IMAGE=$REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+
+            echo "Logging into ECR..."
+            aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin $REGISTRY
+
+            echo "Pulling image..."
+            docker pull $IMAGE
+
+            echo "Running migrations..."
+            docker run --rm \
+              --env-file /home/ec2-user/.env \
+              $IMAGE \
+              alembic upgrade head
+
+            echo "Restarting api-gateway..."
+            docker stop api-gateway || true
+            docker rm api-gateway || true
+
+            docker run -d \
+              --name api-gateway \
+              --restart unless-stopped \
+              -p 8000:8000 \
+              --env-file /home/ec2-user/.env \
+              $IMAGE
