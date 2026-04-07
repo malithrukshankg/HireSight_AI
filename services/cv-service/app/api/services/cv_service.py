@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+import io
 from pathlib import Path
 import logging
 import re
@@ -173,7 +174,8 @@ class CvService:
         self,
         *,
         cv_id: uuid.UUID,
-        file: UploadFile,
+        file_bytes: bytes,
+        source_name: str,
         file_type: str,
     ) -> tuple[str, str | None, int | None, str | None]:
         """
@@ -192,7 +194,10 @@ class CvService:
             return "skipped", None, None, "Extraction currently supports PDF only"
 
         try:
-            extracted_text, page_count = self.extract_pdf_text_from_upload(file)
+            extracted_text, page_count = self._extract_pdf_text(
+                file_bytes,
+                source_name=source_name,
+            )
             persisted_cv = await self.repo.update_extraction_result(
                 cv_id=cv_id,
                 extracted_text=extracted_text,
@@ -261,7 +266,7 @@ class CvService:
         }
 
     def _validate_and_upload_to_s3(
-        self, file: UploadFile
+        self, file: UploadFile, file_bytes: bytes
     ) -> tuple[str, str, str, str, int | None, str]:
         """Validate file and upload to S3. Returns (original_filename, content_type, s3_key, file_type, size_bytes)."""
         if file is None:
@@ -284,9 +289,9 @@ class CvService:
 
         s3_key = f"cvs/{uuid.uuid4()}-{original_filename}"
         try:
-            file.file.seek(0)
+            upload_stream = io.BytesIO(file_bytes)
             self.s3_client.upload_fileobj(
-                file.file,
+                upload_stream,
                 settings.S3_BUCKET,
                 s3_key,
                 ExtraArgs={"ContentType": content_type},
@@ -299,8 +304,9 @@ class CvService:
     async def upload_cv(self, file: UploadFile, principal: dict) -> dict:
         _ = principal  # keep dependency contract for future user-aware keys
 
+        file_bytes = self._read_upload_bytes(file)
         original_filename, content_type, s3_key, file_type, file_size_bytes = (
-            self._validate_and_upload_to_s3(file)
+            self._validate_and_upload_to_s3(file, file_bytes)
         )
 
         try:
@@ -323,7 +329,8 @@ class CvService:
         extraction_status, extracted_text, page_count, extraction_error = (
             await self._extract_and_persist_for_cv(
                 cv_id=cv.id,
-                file=file,
+                file_bytes=file_bytes,
+                source_name=original_filename,
                 file_type=file_type,
             )
         )
@@ -350,8 +357,9 @@ class CvService:
         uploaded_by_user_id: uuid.UUID,
     ) -> dict:
         """Upload CV for a specific candidate (job apply flow)."""
+        file_bytes = self._read_upload_bytes(file)
         original_filename, content_type, s3_key, file_type, file_size_bytes = (
-            self._validate_and_upload_to_s3(file)
+            self._validate_and_upload_to_s3(file, file_bytes)
         )
 
         cv = await self.repo.upsert_uploaded_cv(
@@ -368,7 +376,8 @@ class CvService:
         extraction_status, extracted_text, page_count, extraction_error = (
             await self._extract_and_persist_for_cv(
                 cv_id=cv.id,
-                file=file,
+                file_bytes=file_bytes,
+                source_name=original_filename,
                 file_type=file_type,
             )
         )

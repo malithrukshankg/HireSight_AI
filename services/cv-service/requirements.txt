@@ -9,3 +9,4 @@ boto3==1.34.162
 google-genai==0.3.0
 psycopg2-binary==2.9.9
 asyncpg==0.30.0
+pymupdf
