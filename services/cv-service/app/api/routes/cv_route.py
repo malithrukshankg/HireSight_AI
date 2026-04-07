@@ -6,6 +6,7 @@ from app.api.controllers.cv_controller import CvController
 from app.api.schemas.cv_schema import (
     CVByCandidateResponse,
     CVExtractionResponse,
+    CVStructuredExtractionResponse,
     CVUploadResponse,
 )
 from app.database import DBSession
@@ -51,3 +52,14 @@ async def trigger_extraction(
     db: DBSession,
 ):
     return await CvController(db).trigger_extraction(cv_id)
+
+
+@internal_router.post(
+    "/extract-structured/{cv_id}",
+    response_model=CVStructuredExtractionResponse,
+)
+async def trigger_structured_extraction(
+    cv_id: uuid.UUID,
+    db: DBSession,
+):
+    return await CvController(db).trigger_structured_extraction(cv_id)

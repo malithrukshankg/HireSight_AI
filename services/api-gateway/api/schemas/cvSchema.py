@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Any
 import uuid
 
 from pydantic import BaseModel
@@ -24,3 +25,10 @@ class CVExtractionResponse(BaseModel):
     extracted_text: str | None = None
     page_count: int | None = None
     extraction_error: str | None = None
+
+
+class CVStructuredExtractionResponse(BaseModel):
+    id: uuid.UUID
+    structured_extraction_status: str
+    parsed_profile_json: dict[str, Any] | None = None
+    structured_extraction_error: str | None = None

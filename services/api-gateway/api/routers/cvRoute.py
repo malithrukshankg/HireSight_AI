@@ -4,7 +4,11 @@ import uuid
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 
 from api.clients.cv_client import CvClient
-from api.schemas.cvSchema import CVExtractionResponse, CVUploadResponse
+from api.schemas.cvSchema import (
+    CVExtractionResponse,
+    CVStructuredExtractionResponse,
+    CVUploadResponse,
+)
 from auth.auth0 import get_current_principal
 
 cvRouter = APIRouter(prefix="/cv", tags=["cv"])
@@ -38,6 +42,24 @@ async def trigger_extraction(
     try:
         result = await client.trigger_extraction(cv_id)
         return CVExtractionResponse.model_validate(result)
+    except httpx.HTTPStatusError as e:
+        try:
+            detail = e.response.json().get("detail", str(e)) if e.response.text else str(e)
+        except Exception:
+            detail = e.response.text or str(e)
+        raise HTTPException(status_code=e.response.status_code, detail=detail)
+
+
+@cvRouter.post("/extract-structured/{cv_id}", response_model=CVStructuredExtractionResponse)
+async def trigger_structured_extraction(
+    cv_id: uuid.UUID,
+    principal: dict = Depends(get_current_principal),
+):
+    _ = principal  # JWT validated by dependency
+    client = CvClient()
+    try:
+        result = await client.trigger_structured_extraction(cv_id)
+        return CVStructuredExtractionResponse.model_validate(result)
     except httpx.HTTPStatusError as e:
         try:
             detail = e.response.json().get("detail", str(e)) if e.response.text else str(e)

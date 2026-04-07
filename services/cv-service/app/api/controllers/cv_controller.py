@@ -4,7 +4,11 @@ from fastapi import HTTPException, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.repositories.cv_repository import CVRepository
-from app.api.schemas.cv_schema import CVByCandidateResponse, CVExtractionResponse
+from app.api.schemas.cv_schema import (
+    CVByCandidateResponse,
+    CVExtractionResponse,
+    CVStructuredExtractionResponse,
+)
 from app.api.services.cv_service import (
     CVExtractionError,
     CVNotFoundError,
@@ -69,4 +73,17 @@ class CvController:
         except CVValidationError as e:
             raise HTTPException(status_code=400, detail=str(e))
         except (CVS3UploadError, CVExtractionError) as e:
+            raise HTTPException(status_code=500, detail=str(e))
+
+    async def trigger_structured_extraction(
+        self, cv_id: uuid.UUID
+    ) -> CVStructuredExtractionResponse:
+        try:
+            result = await self.service.extract_structured_profile_for_existing_cv(cv_id)
+            return CVStructuredExtractionResponse.model_validate(result)
+        except CVNotFoundError as e:
+            raise HTTPException(status_code=404, detail=str(e))
+        except CVValidationError as e:
+            raise HTTPException(status_code=400, detail=str(e))
+        except CVExtractionError as e:
             raise HTTPException(status_code=500, detail=str(e))
