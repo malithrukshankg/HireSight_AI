@@ -28,6 +28,10 @@ class CVExtractionError(RuntimeError):
     pass
 
 
+class CVNotFoundError(RuntimeError):
+    pass
+
+
 class CvService:
     _ALLOWED_CONTENT_TYPES = {
         "application/pdf": "pdf",
@@ -139,6 +143,32 @@ class CvService:
         source_name = self._sanitize_filename(file.filename or "upload.pdf")
         return self._extract_pdf_text(file_bytes, source_name=source_name)
 
+    def _download_cv_bytes_from_s3(self, *, bucket: str, s3_key: str) -> bytes:
+        """Download CV bytes from S3 for manual re-extraction."""
+        logger.info("CV S3 download started: bucket=%s s3_key=%s", bucket, s3_key)
+        try:
+            response = self.s3_client.get_object(Bucket=bucket, Key=s3_key)
+            body = response.get("Body")
+            if body is None:
+                raise CVExtractionError("S3 object body is missing")
+
+            file_bytes = body.read()
+            if not isinstance(file_bytes, (bytes, bytearray)) or len(file_bytes) == 0:
+                raise CVExtractionError("S3 file content is empty")
+
+            logger.info(
+                "CV S3 download succeeded: bucket=%s s3_key=%s bytes=%s",
+                bucket,
+                s3_key,
+                len(file_bytes),
+            )
+            return bytes(file_bytes)
+        except (CVExtractionError, CVValidationError):
+            raise
+        except (BotoCoreError, ClientError, Exception) as e:
+            logger.exception("CV S3 download failed: bucket=%s s3_key=%s", bucket, s3_key)
+            raise CVS3UploadError("Failed to download CV file from S3") from e
+
     async def _extract_and_persist_for_cv(
         self,
         *,
@@ -179,6 +209,56 @@ class CvService:
             # Extraction failures should not hide successful upload results.
             logger.exception("CV extraction failed: cv_id=%s", cv_id)
             return "failed", None, None, str(e)
+
+    async def trigger_extraction_for_existing_cv(self, cv_id: uuid.UUID) -> dict:
+        """
+        Manually re-run extraction for an existing CV stored in S3.
+
+        This endpoint-level workflow intentionally reuses repository lookup + persisted
+        S3 metadata so we stay aligned with the current architecture boundaries.
+        """
+        cv = await self.repo.find_by_id(cv_id)
+        if cv is None:
+            raise CVNotFoundError("CV not found")
+
+        if cv.file_type != "pdf":
+            logger.info(
+                "Manual CV extraction skipped: cv_id=%s reason=unsupported_file_type file_type=%s",
+                cv.id,
+                cv.file_type,
+            )
+            return {
+                "id": cv.id,
+                "extraction_status": "skipped",
+                "extracted_text": None,
+                "page_count": None,
+                "extraction_error": "Extraction currently supports PDF only",
+            }
+
+        bucket = (cv.s3_bucket or "").strip()
+        s3_key = (cv.s3_key or "").strip()
+        if not bucket or not s3_key:
+            raise CVValidationError("CV storage metadata is incomplete")
+
+        file_bytes = self._download_cv_bytes_from_s3(bucket=bucket, s3_key=s3_key)
+        source_name = cv.original_filename or cv.file_name or str(cv.id)
+        extracted_text, page_count = self._extract_pdf_text(file_bytes, source_name=source_name)
+
+        persisted_cv = await self.repo.update_extraction_result(
+            cv_id=cv.id,
+            extracted_text=extracted_text,
+        )
+        if persisted_cv is None:
+            # Defensive guard in case the row is deleted between read and write.
+            raise CVNotFoundError("CV not found during extraction persistence")
+
+        return {
+            "id": persisted_cv.id,
+            "extraction_status": "completed",
+            "extracted_text": extracted_text,
+            "page_count": page_count,
+            "extraction_error": None,
+        }
 
     def _validate_and_upload_to_s3(
         self, file: UploadFile

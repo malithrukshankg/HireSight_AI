@@ -27,3 +27,11 @@ class CVByCandidateResponse(BaseModel):
     content_type: str
     file_size_bytes: int | None = None
     created_at: datetime
+
+
+class CVExtractionResponse(BaseModel):
+    id: uuid.UUID
+    extraction_status: str
+    extracted_text: str | None = None
+    page_count: int | None = None
+    extraction_error: str | None = None

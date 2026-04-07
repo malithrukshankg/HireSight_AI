@@ -3,7 +3,11 @@ import uuid
 from fastapi import APIRouter, File, Header, UploadFile
 
 from app.api.controllers.cv_controller import CvController
-from app.api.schemas.cv_schema import CVByCandidateResponse, CVUploadResponse
+from app.api.schemas.cv_schema import (
+    CVByCandidateResponse,
+    CVExtractionResponse,
+    CVUploadResponse,
+)
 from app.database import DBSession
 
 cv_router = APIRouter(prefix="/cv", tags=["cv"])
@@ -39,3 +43,11 @@ async def get_by_candidate(
     db: DBSession,
 ):
     return await CvController(db).get_by_candidate_id(candidate_id)
+
+
+@internal_router.post("/extract/{cv_id}", response_model=CVExtractionResponse)
+async def trigger_extraction(
+    cv_id: uuid.UUID,
+    db: DBSession,
+):
+    return await CvController(db).trigger_extraction(cv_id)
