@@ -92,7 +92,7 @@ class CvService:
         logger.info("CV extraction started: source=%s bytes=%s", source_name, len(file_bytes))
 
         try:
-            import fitz
+            import fitz  # pyright: ignore[reportMissingImports]
         except Exception as e:
             logger.exception("PyMuPDF import failed: source=%s", source_name)
             raise CVExtractionError("PyMuPDF is not available for extraction") from e
@@ -138,6 +138,47 @@ class CvService:
         file_bytes = self._read_upload_bytes(file)
         source_name = self._sanitize_filename(file.filename or "upload.pdf")
         return self._extract_pdf_text(file_bytes, source_name=source_name)
+
+    async def _extract_and_persist_for_cv(
+        self,
+        *,
+        cv_id: uuid.UUID,
+        file: UploadFile,
+        file_type: str,
+    ) -> tuple[str, str | None, int | None, str | None]:
+        """
+        Run extraction and persist results for an existing CV row.
+
+        Returns:
+            extraction_status, extracted_text, page_count, extraction_error
+        """
+        if file_type != "pdf":
+            # Phase 1 only supports PDF parsing. Keep upload successful and report status clearly.
+            logger.info(
+                "CV extraction skipped: cv_id=%s reason=unsupported_file_type file_type=%s",
+                cv_id,
+                file_type,
+            )
+            return "skipped", None, None, "Extraction currently supports PDF only"
+
+        try:
+            extracted_text, page_count = self.extract_pdf_text_from_upload(file)
+            persisted_cv = await self.repo.update_extraction_result(
+                cv_id=cv_id,
+                extracted_text=extracted_text,
+            )
+            if persisted_cv is None:
+                logger.error(
+                    "CV extraction persistence failed: cv_id=%s reason=cv_not_found_after_upload",
+                    cv_id,
+                )
+                return "failed", None, None, "CV record not found during extraction persistence"
+
+            return "completed", extracted_text, page_count, None
+        except (CVValidationError, CVExtractionError) as e:
+            # Extraction failures should not hide successful upload results.
+            logger.exception("CV extraction failed: cv_id=%s", cv_id)
+            return "failed", None, None, str(e)
 
     def _validate_and_upload_to_s3(
         self, file: UploadFile
@@ -199,6 +240,14 @@ class CvService:
             s3_key=s3_key,
         )
 
+        extraction_status, extracted_text, page_count, extraction_error = (
+            await self._extract_and_persist_for_cv(
+                cv_id=cv.id,
+                file=file,
+                file_type=file_type,
+            )
+        )
+
         return {
             "id": cv.id,
             "s3_key": s3_key,
@@ -207,6 +256,10 @@ class CvService:
             "content_type": content_type,
             "file_size_bytes": file_size_bytes,
             "created_at": cv.created_at or datetime.now(timezone.utc),
+            "extraction_status": extraction_status,
+            "extracted_text": extracted_text,
+            "page_count": page_count,
+            "extraction_error": extraction_error,
         }
 
     async def upload_cv_for_candidate(
@@ -232,6 +285,14 @@ class CvService:
             s3_key=s3_key,
         )
 
+        extraction_status, extracted_text, page_count, extraction_error = (
+            await self._extract_and_persist_for_cv(
+                cv_id=cv.id,
+                file=file,
+                file_type=file_type,
+            )
+        )
+
         return {
             "id": cv.id,
             "s3_key": s3_key,
@@ -240,4 +301,8 @@ class CvService:
             "content_type": content_type,
             "file_size_bytes": file_size_bytes,
             "created_at": cv.created_at or datetime.now(timezone.utc),
+            "extraction_status": extraction_status,
+            "extracted_text": extracted_text,
+            "page_count": page_count,
+            "extraction_error": extraction_error,
         }

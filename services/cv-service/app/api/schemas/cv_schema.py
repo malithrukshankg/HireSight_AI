@@ -12,6 +12,10 @@ class CVUploadResponse(BaseModel):
     content_type: str
     file_size_bytes: int | None = None
     created_at: datetime
+    extraction_status: str
+    extracted_text: str | None = None
+    page_count: int | None = None
+    extraction_error: str | None = None
 
 
 class CVByCandidateResponse(BaseModel):
