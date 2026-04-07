@@ -1,4 +1,5 @@
 import uuid
+from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -12,6 +13,10 @@ class CVRepository:
 
     async def find_by_candidate_id(self, candidate_id: uuid.UUID) -> CV | None:
         result = await self.db.execute(select(CV).where(CV.candidate_id == candidate_id))
+        return result.scalar_one_or_none()
+
+    async def find_by_id(self, cv_id: uuid.UUID) -> CV | None:
+        result = await self.db.execute(select(CV).where(CV.id == cv_id))
         return result.scalar_one_or_none()
 
     async def upsert_uploaded_cv(
@@ -55,3 +60,22 @@ class CVRepository:
         await self.db.commit()
         await self.db.refresh(existing)
         return existing
+
+    async def update_extraction_result(
+        self,
+        *,
+        cv_id: uuid.UUID,
+        extracted_text: str,
+        parsed_profile_json: dict[str, Any] | None = None,
+        embedding_version: str | None = None,
+    ) -> CV | None:
+        cv = await self.find_by_id(cv_id)
+        if cv is None:
+            return None
+
+        cv.extracted_text = extracted_text
+        cv.parsed_profile_json = parsed_profile_json
+        cv.embedding_version = embedding_version
+        await self.db.commit()
+        await self.db.refresh(cv)
+        return cv
