@@ -17,6 +17,9 @@ class CVUploadResponse(BaseModel):
     extracted_text: str | None = None
     page_count: int | None = None
     extraction_error: str | None = None
+    structured_extraction_status: str | None = None
+    parsed_profile_json: dict[str, Any] | None = None
+    structured_extraction_error: str | None = None
 
 
 class CVExtractionResponse(BaseModel):

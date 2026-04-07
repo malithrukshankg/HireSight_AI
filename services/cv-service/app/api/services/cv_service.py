@@ -262,6 +262,41 @@ class CvService:
             logger.exception("CV extraction failed: cv_id=%s", cv_id)
             return "failed", None, None, str(e)
 
+    async def _auto_extract_structured_for_cv(
+        self,
+        *,
+        cv_id: uuid.UUID,
+        extracted_text: str,
+    ) -> tuple[str, dict | None, str | None]:
+        """Auto-run structured extraction after successful text extraction."""
+        text = extracted_text.strip()
+        if not text:
+            logger.info(
+                "Structured CV extraction skipped: cv_id=%s reason=empty_extracted_text",
+                cv_id,
+            )
+            return "skipped", None, "Structured extraction requires non-empty extracted text"
+
+        try:
+            profile = self.extract_structured_profile_from_text(raw_text=text)
+            persisted_cv = await self.repo.update_extraction_result(
+                cv_id=cv_id,
+                extracted_text=text,
+                parsed_profile_json=profile.model_dump(),
+            )
+            if persisted_cv is None:
+                logger.error(
+                    "Structured CV extraction persistence failed: cv_id=%s reason=cv_not_found_after_upload",
+                    cv_id,
+                )
+                return "failed", None, "CV record not found during structured extraction persistence"
+
+            return "completed", profile.model_dump(), None
+        except (CVValidationError, CVExtractionError) as e:
+            # Keep upload successful even if structured extraction fails.
+            logger.exception("Structured CV extraction failed: cv_id=%s", cv_id)
+            return "failed", None, str(e)
+
     async def trigger_extraction_for_existing_cv(self, cv_id: uuid.UUID) -> dict:
         """
         Manually re-run extraction for an existing CV stored in S3.
@@ -382,6 +417,19 @@ class CvService:
             )
         )
 
+        structured_extraction_status: str = "skipped"
+        parsed_profile_json: dict | None = None
+        structured_extraction_error: str | None = None
+        if extraction_status == "completed" and extracted_text:
+            (
+                structured_extraction_status,
+                parsed_profile_json,
+                structured_extraction_error,
+            ) = await self._auto_extract_structured_for_cv(
+                cv_id=cv.id,
+                extracted_text=extracted_text,
+            )
+
         return {
             "id": cv.id,
             "s3_key": s3_key,
@@ -394,6 +442,9 @@ class CvService:
             "extracted_text": extracted_text,
             "page_count": page_count,
             "extraction_error": extraction_error,
+            "structured_extraction_status": structured_extraction_status,
+            "parsed_profile_json": parsed_profile_json,
+            "structured_extraction_error": structured_extraction_error,
         }
 
     async def upload_cv_for_candidate(
@@ -429,6 +480,19 @@ class CvService:
             )
         )
 
+        structured_extraction_status: str = "skipped"
+        parsed_profile_json: dict | None = None
+        structured_extraction_error: str | None = None
+        if extraction_status == "completed" and extracted_text:
+            (
+                structured_extraction_status,
+                parsed_profile_json,
+                structured_extraction_error,
+            ) = await self._auto_extract_structured_for_cv(
+                cv_id=cv.id,
+                extracted_text=extracted_text,
+            )
+
         return {
             "id": cv.id,
             "s3_key": s3_key,
@@ -441,4 +505,7 @@ class CvService:
             "extracted_text": extracted_text,
             "page_count": page_count,
             "extraction_error": extraction_error,
+            "structured_extraction_status": structured_extraction_status,
+            "parsed_profile_json": parsed_profile_json,
+            "structured_extraction_error": structured_extraction_error,
         }
