@@ -1,5 +1,8 @@
+from __future__ import annotations
+
 from datetime import datetime
 import re
+from typing import Any
 import uuid
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -18,7 +21,7 @@ class CVUploadResponse(BaseModel):
     page_count: int | None = None
     extraction_error: str | None = None
     structured_extraction_status: str | None = None
-    parsed_profile_json: "CVStructuredProfile" | None = None
+    parsed_profile_json: dict[str, Any] | None = None
     structured_extraction_error: str | None = None
 
 
