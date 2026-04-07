@@ -7,12 +7,21 @@ class Settings(BaseSettings):
 
     SQLALCHEMY_DATABASE_URI: str = Field(alias="DATABASE_URL")
     SQLALCHEMY_ECHO: bool = False
-    CV_DB_SCHEMA: str = "cv_schema"
-    S3_BUCKET: str = "hiresight-upload-cv"
-    AWS_REGION: str = "ap-southeast-2"
-    CV_MAX_SIZE_MB: int = 5
-    CV_PLACEHOLDER_CANDIDATE_ID: str = "00000000-0000-0000-0000-000000000001"
-    CV_PLACEHOLDER_UPLOADED_BY_USER_ID: str = "00000000-0000-0000-0000-000000000002"
+    CV_DB_SCHEMA: str = Field(default="cv_schema", alias="CV_DB_SCHEMA")
+    S3_BUCKET: str = Field(default="hiresight-upload-cv", alias="S3_BUCKET")
+    AWS_REGION: str = Field(default="ap-southeast-2", alias="AWS_REGION")
+    CV_MAX_SIZE_MB: int = Field(default=5, alias="CV_MAX_SIZE_MB")
+    CV_PLACEHOLDER_CANDIDATE_ID: str = Field(
+        default="00000000-0000-0000-0000-000000000001",
+        alias="CV_PLACEHOLDER_CANDIDATE_ID",
+    )
+    CV_PLACEHOLDER_UPLOADED_BY_USER_ID: str = Field(
+        default="00000000-0000-0000-0000-000000000002",
+        alias="CV_PLACEHOLDER_UPLOADED_BY_USER_ID",
+    )
+    OPENAI_API_KEY: str | None = Field(default=None, alias="OPENAI_API_KEY")
+    OPENAI_MODEL: str = Field(default="gpt-4o-mini", alias="OPENAI_MODEL")
+    CV_STRUCTURED_MAX_RETRIES: int = Field(default=2, alias="CV_STRUCTURED_MAX_RETRIES")
     
 
 settings = Settings()
