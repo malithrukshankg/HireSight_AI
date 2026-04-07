@@ -12,6 +12,13 @@ from botocore.exceptions import BotoCoreError, ClientError
 from fastapi import UploadFile
 
 from app.api.repositories.cv_repository import CVRepository
+from app.api.schemas.cv_schema import CVStructuredProfile
+from app.api.services.structured_cv_extraction_service import (
+    StructuredCVExtractionService,
+    StructuredExtractionConfigError,
+    StructuredExtractionProviderError,
+    StructuredExtractionValidationError,
+)
 from app.config import settings
 
 logger = logging.getLogger(__name__)
@@ -42,6 +49,46 @@ class CvService:
     def __init__(self, repo: CVRepository):
         self.repo = repo
         self.s3_client = boto3.client("s3", region_name=settings.AWS_REGION)
+        self.structured_extraction_service = StructuredCVExtractionService(
+            api_key=settings.OPENAI_API_KEY,
+            model=settings.OPENAI_MODEL,
+            max_retries=settings.CV_STRUCTURED_MAX_RETRIES,
+        )
+
+    def extract_structured_profile_from_text(self, *, raw_text: str) -> CVStructuredProfile:
+        try:
+            return self.structured_extraction_service.extract_from_raw_text(raw_text=raw_text)
+        except StructuredExtractionConfigError as e:
+            raise CVValidationError(str(e)) from e
+        except StructuredExtractionValidationError as e:
+            raise CVValidationError(str(e)) from e
+        except StructuredExtractionProviderError as e:
+            raise CVExtractionError(str(e)) from e
+
+    async def extract_structured_profile_for_existing_cv(self, cv_id: uuid.UUID) -> dict:
+        cv = await self.repo.find_by_id(cv_id)
+        if cv is None:
+            raise CVNotFoundError("CV not found")
+
+        raw_text = (cv.extracted_text or "").strip()
+        if not raw_text:
+            raise CVValidationError("CV extracted text is missing; run text extraction first")
+
+        profile = self.extract_structured_profile_from_text(raw_text=raw_text)
+        persisted_cv = await self.repo.update_extraction_result(
+            cv_id=cv.id,
+            extracted_text=raw_text,
+            parsed_profile_json=profile.model_dump(),
+        )
+        if persisted_cv is None:
+            raise CVNotFoundError("CV not found during structured extraction persistence")
+
+        return {
+            "id": persisted_cv.id,
+            "structured_extraction_status": "completed",
+            "parsed_profile_json": profile.model_dump(),
+            "structured_extraction_error": None,
+        }
 
     def _sanitize_filename(self, filename: str) -> str:
         name = Path(filename).name.strip()
