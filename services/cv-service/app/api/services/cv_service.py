@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 from pathlib import Path
+import logging
 import re
 import uuid
 
@@ -12,12 +13,18 @@ from fastapi import UploadFile
 from app.api.repositories.cv_repository import CVRepository
 from app.config import settings
 
+logger = logging.getLogger(__name__)
+
 
 class CVValidationError(ValueError):
     pass
 
 
 class CVS3UploadError(RuntimeError):
+    pass
+
+
+class CVExtractionError(RuntimeError):
     pass
 
 
@@ -47,6 +54,90 @@ class CvService:
             return int(size)
         except Exception:
             return None
+
+    def _read_upload_bytes(self, upload: UploadFile) -> bytes:
+        """Read upload bytes without breaking downstream stream consumers."""
+        stream = upload.file
+        try:
+            current = stream.tell()
+        except Exception as e:
+            raise CVValidationError("Unable to read uploaded file stream") from e
+
+        try:
+            # We always rewind to start because extraction should process full PDF content.
+            stream.seek(0)
+            content = stream.read()
+        except Exception as e:
+            raise CVValidationError("Failed to read uploaded file content") from e
+        finally:
+            # Restore stream position so the same UploadFile can be reused safely later.
+            try:
+                stream.seek(current)
+            except Exception:
+                pass
+
+        if not isinstance(content, (bytes, bytearray)):
+            raise CVValidationError("Uploaded file content is not a valid byte stream")
+
+        if len(content) == 0:
+            raise CVValidationError("Uploaded file is empty")
+
+        return bytes(content)
+
+    def _extract_pdf_text(self, file_bytes: bytes, *, source_name: str) -> tuple[str, int]:
+        """Extract plain text from a PDF byte stream using PyMuPDF."""
+        if not file_bytes:
+            raise CVValidationError("Uploaded file is empty")
+
+        logger.info("CV extraction started: source=%s bytes=%s", source_name, len(file_bytes))
+
+        try:
+            import fitz
+        except Exception as e:
+            logger.exception("PyMuPDF import failed: source=%s", source_name)
+            raise CVExtractionError("PyMuPDF is not available for extraction") from e
+
+        document = None
+        try:
+            document = fitz.open(stream=file_bytes, filetype="pdf")
+            page_count = document.page_count
+            page_text_parts: list[str] = []
+
+            for page_index in range(page_count):
+                # Keep extraction raw/plain for phase 1; parsing/structuring comes later.
+                page = document.load_page(page_index)
+                page_text_parts.append(page.get_text("text") or "")
+
+            extracted_text = "\n".join(page_text_parts).strip()
+            logger.info(
+                "CV extraction succeeded: source=%s pages=%s text_chars=%s",
+                source_name,
+                page_count,
+                len(extracted_text),
+            )
+            return extracted_text, page_count
+        except CVValidationError:
+            raise
+        except Exception as e:
+            logger.exception("CV extraction failed: source=%s", source_name)
+            raise CVExtractionError("Failed to extract text from PDF") from e
+        finally:
+            if document is not None:
+                try:
+                    document.close()
+                except Exception:
+                    pass
+
+    def extract_pdf_text_from_upload(self, file: UploadFile) -> tuple[str, int]:
+        """
+        Public service helper for PDF text extraction from an UploadFile.
+
+        This is intentionally separated so upload orchestration can call extraction
+        when needed (automatic and manual flows) without duplicating stream logic.
+        """
+        file_bytes = self._read_upload_bytes(file)
+        source_name = self._sanitize_filename(file.filename or "upload.pdf")
+        return self._extract_pdf_text(file_bytes, source_name=source_name)
 
     def _validate_and_upload_to_s3(
         self, file: UploadFile
