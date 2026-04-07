@@ -71,3 +71,12 @@ class CvClient:
                 return None
             response.raise_for_status()
             return response.json()
+
+    async def trigger_extraction(self, cv_id: uuid.UUID) -> dict:
+        """POST to cv-service manual extraction endpoint for an existing CV."""
+        async with httpx.AsyncClient(timeout=self.timeout) as client:
+            response = await client.post(
+                f"{self.base_url}/internal/extract/{cv_id}",
+            )
+            response.raise_for_status()
+            return response.json()
