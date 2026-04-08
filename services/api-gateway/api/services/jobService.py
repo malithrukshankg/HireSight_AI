@@ -244,14 +244,16 @@ class JobService:
         if not normalized_name:
             raise ValueError("Full name is required")
 
-        candidate = await self.candidate_repo.find_by_user_and_organization(
+        candidate = await self.candidate_repo.find_by_user_organization_and_job(
             user_id=user_id,
             organization_id=job.organization_id,
+            job_id=job.id,
         )
         if candidate is None:
             candidate = await self.candidate_repo.create(
                 organization_id=job.organization_id,
                 user_id=user_id,
+                job_id=job.id,
                 email=normalized_email,
                 full_name=normalized_name,
                 phone=normalized_phone,
