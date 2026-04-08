@@ -22,6 +22,10 @@ class CandidateRepository:
         )
         return result.scalar_one_or_none()
 
+    async def find_by_id(self, candidate_id: uuid.UUID) -> Candidate | None:
+        result = await self.db.execute(select(Candidate).where(Candidate.id == candidate_id))
+        return result.scalar_one_or_none()
+
     async def create(
         self,
         *,
