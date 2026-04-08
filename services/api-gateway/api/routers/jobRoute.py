@@ -4,7 +4,13 @@ from database import DBSession
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
 
 from api.controllers.jobController import JobController
-from api.schemas.jobSchema import JobApplyResponse, JobCreate, JobRead, JobUpdate
+from api.schemas.jobSchema import (
+    JobApplicationRead,
+    JobApplyResponse,
+    JobCreate,
+    JobRead,
+    JobUpdate,
+)
 from auth.auth0 import (
     get_principal_role,
     require_admin_or_recruiter,
@@ -80,6 +86,19 @@ async def get_job(
     if role == "candidate" and job.status != JobStatusEnum.open:
         raise HTTPException(status_code=404, detail="Job not found")
     return job
+
+
+@jobRouter.get("/{id}/applications", response_model=list[JobApplicationRead])
+async def list_job_applications(
+    id: uuid.UUID,
+    db: DBSession,
+    principal: dict = Depends(require_admin_or_recruiter),
+):
+    """List applications for a job. Admin or recruiter only."""
+    auth0_sub = principal.get("sub")
+    if not auth0_sub:
+        raise HTTPException(status_code=400, detail="auth0_sub not found in token")
+    return await JobController(db).list_applications(job_id=id, auth0_sub=auth0_sub)
 
 
 @jobRouter.post("/{id}/apply", response_model=JobApplyResponse, status_code=201)
