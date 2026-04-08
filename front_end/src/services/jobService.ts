@@ -6,6 +6,7 @@ import type {
   JobCreate,
   JobUpdate,
 } from "../types/job";
+import type { JobApplication as JobApplicationListItem } from "../types/application";
 
 /**
  * Fetch jobs created by the current user (recruiter).
@@ -226,4 +227,28 @@ export async function applyToJob(
   }
 
   return response.json() as Promise<JobApplyResponse>;
+}
+
+export async function getJobApplications(
+  accessToken: string,
+  id: string
+): Promise<JobApplicationListItem[]> {
+  const response = await fetch(`${API_BASE_URL}/jobs/${id}/applications`, {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+
+  if (!response.ok) {
+    const err = await response
+      .json()
+      .catch(() => ({ detail: response.statusText }));
+    throw new Error(
+      (err as { detail?: string }).detail ||
+        `Fetch applications failed: ${response.status}`
+    );
+  }
+
+  return response.json() as Promise<JobApplicationListItem[]>;
 }
