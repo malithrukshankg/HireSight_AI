@@ -1,10 +1,12 @@
 import uuid
 
 from fastapi import APIRouter, File, Header, UploadFile
+from fastapi.responses import Response
 
 from app.api.controllers.cv_controller import CvController
 from app.api.schemas.cv_schema import (
     CVByCandidateResponse,
+    CVDetailResponse,
     CVExtractionResponse,
     CVStructuredExtractionResponse,
     CVUploadResponse,
@@ -44,6 +46,27 @@ async def get_by_candidate(
     db: DBSession,
 ):
     return await CvController(db).get_by_candidate_id(candidate_id)
+
+
+@internal_router.get("/cv/{cv_id}", response_model=CVDetailResponse)
+async def get_cv_detail(
+    cv_id: uuid.UUID,
+    db: DBSession,
+):
+    return await CvController(db).get_cv_detail(cv_id)
+
+
+@internal_router.get("/cv/{cv_id}/file")
+async def get_cv_file(
+    cv_id: uuid.UUID,
+    db: DBSession,
+):
+    file_bytes, content_type, filename = await CvController(db).get_cv_file(cv_id)
+    return Response(
+        content=file_bytes,
+        media_type=content_type,
+        headers={"Content-Disposition": f'inline; filename="{filename}"'},
+    )
 
 
 @internal_router.post("/extract/{cv_id}", response_model=CVExtractionResponse)
