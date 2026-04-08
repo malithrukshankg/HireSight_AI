@@ -10,7 +10,13 @@ from api.repositories.candidateRepository import CandidateRepository
 from api.repositories.jobRepository import JobRepository
 from api.repositories.organizationRepository import OrganizationRepository
 from api.repositories.userRepository import UserRepository
-from api.schemas.jobSchema import JobApplyResponse, JobCreate, JobRead, JobUpdate
+from api.schemas.jobSchema import (
+    JobApplicationRead,
+    JobApplyResponse,
+    JobCreate,
+    JobRead,
+    JobUpdate,
+)
 from api.services.jobService import JobService
 from models import Job
 from models.jobs import JobStatusEnum
@@ -138,6 +144,24 @@ class JobController:
                 cv_file=cv_file,
             )
             return JobApplyResponse.model_validate(result)
+        except httpx.HTTPStatusError as e:
+            try:
+                detail = e.response.json().get("detail", str(e)) if e.response.text else str(e)
+            except Exception:
+                detail = e.response.text or str(e)
+            raise HTTPException(status_code=e.response.status_code, detail=detail)
+        except ValueError as e:
+            self._handle_error(e)
+
+    async def list_applications(
+        self, *, job_id: uuid.UUID, auth0_sub: str
+    ) -> list[JobApplicationRead]:
+        user_repo = UserRepository(self.db)
+        user = await user_repo.find_by_auth0_sub(auth0_sub)
+        if user is None:
+            raise HTTPException(status_code=404, detail="User not found")
+        try:
+            return await self.service.list_applications(job_id=job_id, user_id=user.id)
         except httpx.HTTPStatusError as e:
             try:
                 detail = e.response.json().get("detail", str(e)) if e.response.text else str(e)
