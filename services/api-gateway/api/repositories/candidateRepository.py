@@ -1,6 +1,6 @@
 import uuid
 
-from sqlalchemy import select
+from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from models import Candidate
@@ -54,3 +54,16 @@ class CandidateRepository:
         await self.db.commit()
         await self.db.refresh(candidate)
         return candidate
+
+    async def list_by_job_id(
+        self, job_id: uuid.UUID, organization_id: uuid.UUID
+    ) -> list[Candidate]:
+        result = await self.db.execute(
+            select(Candidate)
+            .where(
+                Candidate.job_id == job_id,
+                Candidate.organization_id == organization_id,
+            )
+            .order_by(desc(Candidate.created_at))
+        )
+        return list(result.scalars().all())

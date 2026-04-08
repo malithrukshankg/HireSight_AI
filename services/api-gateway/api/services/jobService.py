@@ -6,7 +6,7 @@ from fastapi import UploadFile
 
 from api.clients.cv_client import CvClient
 from api.repositories.candidateRepository import CandidateRepository
-from api.schemas.jobSchema import JobCreate, JobRead, JobUpdate
+from api.schemas.jobSchema import JobApplicationRead, JobCreate, JobRead, JobUpdate
 from config import settings
 from core.cache_service import (
     build_cache_key,
@@ -286,3 +286,41 @@ class JobService:
             "cv_id": cv_id,
             "message": "Application details saved successfully",
         }
+
+    async def list_applications(
+        self, *, job_id: uuid.UUID, user_id: uuid.UUID
+    ) -> list[JobApplicationRead]:
+        if self.candidate_repo is None or self.cv_client is None:
+            raise ValueError("Candidate/CV services are not configured")
+
+        job = await self.job_repo.find_by_id(job_id)
+        if job is None:
+            raise ValueError("Job not found")
+
+        is_member = await self.org_repo.user_is_org_member(user_id, job.organization_id)
+        if not is_member:
+            raise ValueError("User is not a member of this organization")
+
+        candidates = await self.candidate_repo.list_by_job_id(
+            job_id=job.id,
+            organization_id=job.organization_id,
+        )
+
+        applications: list[JobApplicationRead] = []
+        for candidate in candidates:
+            cv_meta = await self.cv_client.get_by_candidate_id(candidate.id)
+            cv_id = uuid.UUID(cv_meta["id"]) if cv_meta and cv_meta.get("id") else None
+            applications.append(
+                JobApplicationRead(
+                    candidate_id=candidate.id,
+                    job_id=job.id,
+                    organization_id=job.organization_id,
+                    full_name=candidate.full_name,
+                    email=candidate.email,
+                    phone=candidate.phone,
+                    status=candidate.status,
+                    applied_at=candidate.created_at,
+                    cv_id=cv_id,
+                )
+            )
+        return applications

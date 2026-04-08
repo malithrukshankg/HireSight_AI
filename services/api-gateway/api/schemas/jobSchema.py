@@ -54,3 +54,15 @@ class JobApplyResponse(BaseModel):
     candidate_id: uuid.UUID
     cv_id: uuid.UUID
     message: str
+
+
+class JobApplicationRead(BaseModel):
+    candidate_id: uuid.UUID
+    job_id: uuid.UUID
+    organization_id: uuid.UUID
+    full_name: str
+    email: str
+    phone: str | None = None
+    status: str
+    applied_at: datetime
+    cv_id: uuid.UUID | None = None
