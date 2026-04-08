@@ -509,3 +509,36 @@ class CvService:
             "parsed_profile_json": parsed_profile_json,
             "structured_extraction_error": structured_extraction_error,
         }
+
+    async def get_cv_detail(self, cv_id: uuid.UUID) -> dict:
+        cv = await self.repo.find_by_id(cv_id)
+        if cv is None:
+            raise CVNotFoundError("CV not found")
+        return {
+            "id": cv.id,
+            "candidate_id": cv.candidate_id,
+            "s3_key": cv.s3_key or "",
+            "bucket": cv.s3_bucket or "",
+            "original_filename": cv.original_filename or "",
+            "content_type": cv.content_type or "application/octet-stream",
+            "file_size_bytes": cv.size_bytes,
+            "created_at": cv.created_at,
+            "extraction_status": "completed" if cv.extracted_text else "pending",
+            "extracted_text": cv.extracted_text,
+            "structured_extraction_status": "completed" if cv.parsed_profile_json else "pending",
+            "parsed_profile_json": cv.parsed_profile_json,
+            "structured_extraction_error": None,
+        }
+
+    async def get_cv_file(self, cv_id: uuid.UUID) -> tuple[bytes, str, str]:
+        cv = await self.repo.find_by_id(cv_id)
+        if cv is None:
+            raise CVNotFoundError("CV not found")
+        bucket = (cv.s3_bucket or "").strip()
+        s3_key = (cv.s3_key or "").strip()
+        if not bucket or not s3_key:
+            raise CVValidationError("CV storage metadata is incomplete")
+        file_bytes = self._download_cv_bytes_from_s3(bucket=bucket, s3_key=s3_key)
+        content_type = (cv.content_type or "").strip() or "application/octet-stream"
+        filename = (cv.original_filename or cv.file_name or f"{cv.id}").strip()
+        return file_bytes, content_type, filename
