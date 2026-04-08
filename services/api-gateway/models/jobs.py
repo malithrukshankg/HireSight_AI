@@ -10,6 +10,7 @@ import uuid
 import enum
 
 if TYPE_CHECKING:
+    from .candidate import Candidate
     from .organizations import Organization
     from .user import User
 
@@ -80,4 +81,9 @@ class Job(Base):
         "User",
         back_populates="jobs",
         foreign_keys=[created_by_user_id],
+    )
+    candidates: Mapped[list["Candidate"]] = relationship(
+        "Candidate",
+        back_populates="job",
+        foreign_keys="Candidate.job_id",
     )

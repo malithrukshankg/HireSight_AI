@@ -9,6 +9,7 @@ from datetime import datetime
 import uuid
 
 if TYPE_CHECKING:
+    from .jobs import Job
     from .organizations import Organization
     from .user import User
 
@@ -31,6 +32,11 @@ class Candidate(Base):
     user_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    job_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("jobs.id", ondelete="CASCADE"),
         nullable=True,
     )
 
@@ -74,4 +80,9 @@ class Candidate(Base):
         "User",
         back_populates="candidates",
         foreign_keys=[user_id],
+    )
+    job: Mapped["Job | None"] = relationship(
+        "Job",
+        back_populates="candidates",
+        foreign_keys=[job_id],
     )
