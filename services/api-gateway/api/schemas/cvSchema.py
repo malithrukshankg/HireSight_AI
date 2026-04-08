@@ -35,3 +35,19 @@ class CVStructuredExtractionResponse(BaseModel):
     structured_extraction_status: str
     parsed_profile_json: dict[str, Any] | None = None
     structured_extraction_error: str | None = None
+
+
+class CVProfileResponse(BaseModel):
+    id: uuid.UUID
+    candidate_id: uuid.UUID
+    s3_key: str
+    bucket: str
+    original_filename: str
+    content_type: str
+    file_size_bytes: int | None = None
+    created_at: datetime
+    extraction_status: str | None = None
+    extracted_text: str | None = None
+    structured_extraction_status: str | None = None
+    parsed_profile_json: dict[str, Any] | None = None
+    structured_extraction_error: str | None = None

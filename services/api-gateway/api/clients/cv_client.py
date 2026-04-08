@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import uuid
+from typing import Any
 
 import httpx
 from fastapi import UploadFile
@@ -89,3 +90,23 @@ class CvClient:
             )
             response.raise_for_status()
             return response.json()
+
+    async def get_cv_detail(self, cv_id: uuid.UUID) -> dict[str, Any]:
+        """GET CV detail (including parsed profile) by CV ID."""
+        async with httpx.AsyncClient(timeout=self.timeout) as client:
+            response = await client.get(
+                f"{self.base_url}/internal/cv/{cv_id}",
+            )
+            response.raise_for_status()
+            return response.json()
+
+    async def get_cv_file(self, cv_id: uuid.UUID) -> tuple[bytes, str, str]:
+        """GET CV file bytes by CV ID."""
+        async with httpx.AsyncClient(timeout=self.timeout) as client:
+            response = await client.get(
+                f"{self.base_url}/internal/cv/{cv_id}/file",
+            )
+            response.raise_for_status()
+            content_disposition = response.headers.get("content-disposition", "")
+            media_type = response.headers.get("content-type", "application/octet-stream")
+            return response.content, media_type, content_disposition
