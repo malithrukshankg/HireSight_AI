@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
+import type { MouseEvent } from "react";
+import { useNavigate } from "react-router-dom";
 import { getMyJobs, createJob, deleteJob } from "../../services/jobService";
 import { getOrganizationsForCurrentUser } from "../../services/organizationService";
 import type { Job, JobCreate, JobStatus } from "../../types/job";
@@ -19,15 +21,18 @@ function JobCard({
   orgName,
   onDelete,
   getToken,
+  onOpenApplications,
 }: {
   job: Job;
   orgName: string;
   onDelete: (job: Job) => void;
   getToken: () => Promise<string>;
+  onOpenApplications: (jobId: string) => void;
 }) {
   const [deleting, setDeleting] = useState(false);
 
-  const handleDeleteClick = async () => {
+  const handleDeleteClick = async (e: MouseEvent<HTMLButtonElement>) => {
+    e.stopPropagation();
     if (!window.confirm(`Delete job "${job.title}"?`)) return;
     setDeleting(true);
     try {
@@ -40,7 +45,18 @@ function JobCard({
   };
 
   return (
-    <div className="flex items-center justify-between rounded-xl border border-white/20 bg-white/10 p-4 backdrop-blur-sm">
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={() => onOpenApplications(job.id)}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onOpenApplications(job.id);
+        }
+      }}
+      className="flex cursor-pointer items-center justify-between rounded-xl border border-white/20 bg-white/10 p-4 backdrop-blur-sm transition-colors hover:bg-white/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+    >
       <div className="flex flex-col gap-1">
         <p className="font-medium text-white">{job.title}</p>
         <p className="text-sm text-white/80">{orgName}</p>
@@ -50,6 +66,7 @@ function JobCard({
         <span className="mt-1 inline-flex w-fit rounded-lg bg-white/20 px-2 py-0.5 text-xs font-medium text-white">
           {job.status}
         </span>
+        <span className="mt-1 text-xs text-accent">View applications</span>
       </div>
       <button
         type="button"
@@ -68,6 +85,7 @@ export type JobsTileProps = {
 };
 
 export function JobsTile({ getToken }: JobsTileProps) {
+  const navigate = useNavigate();
   const [jobs, setJobs] = useState<Job[]>([]);
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [loading, setLoading] = useState(true);
@@ -319,6 +337,9 @@ export function JobsTile({ getToken }: JobsTileProps) {
               orgName={getOrgName(job.organization_id)}
               onDelete={handleJobDelete}
               getToken={getToken}
+              onOpenApplications={(jobId) =>
+                navigate(`/recruiter/jobs/${jobId}/applications`)
+              }
             />
           ))}
         </div>

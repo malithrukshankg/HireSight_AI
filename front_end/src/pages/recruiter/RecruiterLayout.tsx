@@ -1,5 +1,6 @@
 import { NavLink, Route, Routes } from "react-router-dom";
 import RecruiterDashboard from "./Dashboard";
+import JobApplicationsPage from "./JobApplications";
 
 /**
  * Layout shell for recruiter routes. Owns recruiter-specific routing and sidebar/nav.
@@ -30,6 +31,7 @@ export function RecruiterLayout() {
       <div className="min-w-0 flex-1 overflow-auto">
         <Routes>
           <Route index element={<RecruiterDashboard />} />
+          <Route path="jobs/:jobId/applications" element={<JobApplicationsPage />} />
         </Routes>
       </div>
     </div>

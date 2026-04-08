@@ -4,6 +4,7 @@ type RecentJobsListProps = {
   jobs: Job[];
   getOrgName: (orgId: string) => string;
   maxItems?: number;
+  onJobClick?: (job: Job) => void;
 };
 
 const statusColors: Record<string, string> = {
@@ -16,6 +17,7 @@ export function RecentJobsList({
   jobs,
   getOrgName,
   maxItems = 5,
+  onJobClick,
 }: RecentJobsListProps) {
   const displayJobs = jobs.slice(0, maxItems);
 
@@ -27,7 +29,22 @@ export function RecentJobsList({
         displayJobs.map((job) => (
           <div
             key={job.id}
-            className="flex items-center justify-between rounded-lg border border-white/10 bg-white/5 px-3 py-2 transition-colors hover:bg-white/10"
+            role={onJobClick ? "button" : undefined}
+            tabIndex={onJobClick ? 0 : undefined}
+            onClick={onJobClick ? () => onJobClick(job) : undefined}
+            onKeyDown={
+              onJobClick
+                ? (e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      onJobClick(job);
+                    }
+                  }
+                : undefined
+            }
+            className={`flex items-center justify-between rounded-lg border border-white/10 bg-white/5 px-3 py-2 transition-colors hover:bg-white/10 ${
+              onJobClick ? "cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent" : ""
+            }`}
           >
             <div className="min-w-0 flex-1">
               <p className="truncate font-medium text-white">{job.title}</p>

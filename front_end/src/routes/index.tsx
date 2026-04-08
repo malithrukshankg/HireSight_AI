@@ -37,7 +37,10 @@ export const router = createBrowserRouter([
           {
             path: "recruiter",
             element: <RoleGuard allowedRoles={["recruiter"]} />,
-            children: [{ index: true, element: <RecruiterLayout /> }],
+            children: [
+              { index: true, element: <RecruiterLayout /> },
+              { path: "*", element: <RecruiterLayout /> },
+            ],
           },
           {
             path: "candidate",

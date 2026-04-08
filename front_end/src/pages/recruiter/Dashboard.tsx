@@ -1,5 +1,6 @@
 import { useAuth0 } from "@auth0/auth0-react";
 import { useCallback, useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { JobsTile } from "../../components/ui/JobsTile";
 import { JobStatusDonut, jobsToStatusData } from "../../components/ui/JobStatusDonut";
 import { JobsBarChart, jobsToBarChartData } from "../../components/ui/JobsBarChart";
@@ -53,6 +54,7 @@ function ClosedIcon() {
 }
 
 export default function RecruiterDashboard() {
+  const navigate = useNavigate();
   const { user, getAccessTokenSilently, logout: auth0Logout } = useAuth0();
   const { error: upsertError } = useEnsureUser();
   const [jobs, setJobs] = useState<Job[]>([]);
@@ -163,7 +165,12 @@ export default function RecruiterDashboard() {
 
           <div className="rounded-xl border border-white/20 bg-white/10 p-6 backdrop-blur-sm">
             <h2 className="mb-4 text-lg font-semibold text-white">Recent Jobs</h2>
-            <RecentJobsList jobs={recentJobs} getOrgName={getOrgName} maxItems={6} />
+            <RecentJobsList
+              jobs={recentJobs}
+              getOrgName={getOrgName}
+              maxItems={6}
+              onJobClick={(job) => navigate(`/recruiter/jobs/${job.id}/applications`)}
+            />
           </div>
         </div>
 
