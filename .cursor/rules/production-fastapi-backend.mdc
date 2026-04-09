@@ -25,9 +25,10 @@ This is a production-grade system. Architectural integrity is mandatory.
   - Request validation
   - Routing
   - Middleware (logging, rate limiting)
-- The API Gateway must NOT contain business logic.
-- Gateway proxies to internal services via HTTP clients (e.g. `api/clients/cv_client.py`).
-- Gateway does not contain S3, CV storage, or service-owned business logic; it forwards and delegates.
+- The API Gateway must NOT host **other services’** concerns: no S3/CV pipelines, no CV normalization, no AI orchestration. Auth, access control, public routing, and **job/candidate domain logic as implemented** stay in the gateway.
+- Gateway proxies to internal services via HTTP clients (e.g. `api/clients/cv_client.py`; `AGENT_SERVICE_URL` supports a future `agent` client for **agent-service**).
+- **agent-service** owns JD scoring and AI workflow orchestration (LangChain inside components; LangGraph for multi-step flows within the service). It does not own CV normalization or gateway job persistence.
+- Gateway does not contain S3, CV storage, or CV/AI pipelines owned by other services; it forwards and delegates.
 
 ---
 

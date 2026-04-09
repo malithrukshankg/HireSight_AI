@@ -13,7 +13,7 @@ HireSight AI is a microservices-based recruitment platform built with:
 
 The system follows a **microservices architecture**.
 
-Services are located under the `services/` directory.
+Services are located under the `services/` directory (including **api-gateway**, **cv-service**, **agent-service**, and any future services).
 
 Each service must remain **logically independent**.
 
@@ -44,11 +44,18 @@ The API Gateway is the only public entry point.
 The API Gateway is responsible for:
 
 - JWT validation via Auth0
+- Access control aligned with user roles
 - Request validation
-- Routing to internal services
+- Public routing and delegation to internal services (HTTP)
 - Basic middleware (logging, rate limiting)
+- **Job and candidate domain** ownership as implemented today (persistence in gateway-owned schema, business rules for jobs/candidates)
 
-The API Gateway must **NOT** contain business logic.
+The API Gateway must **NOT** contain:
+
+- CV file storage, S3, or CV normalization logic (owned by **cv-service**)
+- AI workflow orchestration or JD scoring pipelines (owned by **agent-service**)
+
+It forwards and delegates to those services via HTTP clients (e.g. `CV_SERVICE_URL`, `AGENT_SERVICE_URL`).
 
 ---
 
@@ -95,11 +102,29 @@ Rules:
 - cv-service owns `cv_schema.cvs`; S3 storage is configured in cv-service.
 - Internal cv-service endpoints (`/internal/*`) are not exposed publicly (port not published).
 
-### 3.6 Interview and Scoring
+### 3.6 Agent Service (JD Scoring and AI Orchestration)
 
-- The Interview service manages interview sessions.
-- The Scoring service evaluates candidate performance.
-- Scoring results must be explainable and auditable.
+The **agent-service** (`services/agent-service/`) owns **AI-driven orchestration** for recruitment workflows, including **JD scoring** (CV vs job description comparison), future **explainable scoring pipelines**, and coordination of multi-step flows.
+
+- **LangChain** is intended for use **inside** agent components (e.g. prompts, chains, tools) where appropriate.
+- **LangGraph** is intended for **multi-step workflow orchestration** within agent-service (not as a replacement for microservice boundaries).
+- agent-service calls **cv-service** over HTTP for **structured/normalized CV data**; it does **not** duplicate CV extraction, storage, or normalization.
+- agent-service may call **api-gateway** (or future dedicated services) over HTTP for **job or domain context** once stable internal contracts exist. Do not duplicate job/candidate persistence owned by the gateway.
+- Internal agent endpoints (e.g. under `/internal/...`) must not be exposed publicly; container port is internal to the Docker network unless debugging.
+
+**Domain ownership (do not duplicate across services):**
+
+| Concern | Owner |
+|--------|--------|
+| Auth0 JWT validation, public API surface, job/candidate entities as implemented | **api-gateway** |
+| CV upload, storage, text extraction, structured CV | **cv-service** |
+| JD scoring workflow, CV vs JD comparison logic, AI orchestration, explainable scoring pipeline | **agent-service** |
+
+### 3.7 Interview (Future)
+
+- A dedicated interview service may manage interview sessions when introduced.
+- Scoring that is **AI-orchestrated and JD-related** belongs under **agent-service** (see §3.6); any separate interview product logic should remain in its owning service.
+- Scoring and hiring decisions must remain explainable and auditable where applicable.
 
 ---
 
@@ -132,9 +157,10 @@ Rules:
 
 ## 7. Internal Service Communication
 
-- Internal services (e.g. cv-service) are reachable only from the API Gateway on the Docker network.
+- Internal services (**cv-service**, **agent-service**, etc.) are reachable on the Docker network; typically only **api-gateway** (and other internal services as needed) should call them.
 - Do not publish internal service ports to the host unless required for debugging.
-- Gateway calls internal services via `{SERVICE}_URL` (e.g. `CV_SERVICE_URL`).
+- Gateway calls internal services via `{SERVICE}_URL` (e.g. `CV_SERVICE_URL`, `AGENT_SERVICE_URL`).
+- Service-to-service calls use HTTP; **agent-service** uses configured base URLs (e.g. `CV_SERVICE_URL`, `GATEWAY_SERVICE_URL`) consistent with gateway client patterns.
 - Optional: shared API key header (`X-Internal-Api-Key`) for defense in depth on internal routes.
 
 ---
