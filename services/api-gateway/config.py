@@ -7,6 +7,7 @@ class Settings(BaseSettings):
     SQLALCHEMY_DATABASE_URI: str = Field(alias="DATABASE_URL")
     SQLALCHEMY_ECHO: bool = False
     CV_SERVICE_URL: str = "http://localhost:8001"
+    AGENT_SERVICE_URL: str = "http://localhost:8002"
     CORS_ORIGINS: str = "http://localhost:3000,http://localhost:5173"
     REDIS_ENABLED: bool = True
     REDIS_URL: str = "redis://localhost:6379/0"

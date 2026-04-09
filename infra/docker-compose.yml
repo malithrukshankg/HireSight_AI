@@ -52,6 +52,26 @@ services:
       retries: 10
       start_period: 10s
 
+  agent-service:
+    build: ../services/agent-service
+    container_name: hiresight-agent-service
+    # Port 8002 not published; internal routes reachable only on Docker network
+    environment:
+      CV_SERVICE_URL: http://cv-service:8001
+      GATEWAY_SERVICE_URL: http://api-gateway:8000
+    volumes:
+      - ../services/agent-service:/app
+    command: ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8002", "--reload"]
+    depends_on:
+      cv-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8002/health')\""]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
   api-gateway:
     build: ../services/api-gateway
     container_name: hiresight-api-gateway
@@ -61,6 +81,7 @@ services:
       DATABASE_URL: postgresql+psycopg://hiresight:hiresight@postgres:5432/hiresight
       REDIS_URL: redis://redis:6379/0
       CV_SERVICE_URL: http://cv-service:8001
+      AGENT_SERVICE_URL: http://agent-service:8002
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000,http://localhost:5173}
       AUTH0_DOMAIN: dev-wt0zci4ynfbqzxos.us.auth0.com
       AUTH0_AUDIENCE: https://api.hiresight.local
@@ -78,6 +99,8 @@ services:
       redis:
         condition: service_healthy
       cv-service:
+        condition: service_healthy
+      agent-service:
         condition: service_healthy
 
 
