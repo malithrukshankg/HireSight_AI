@@ -20,6 +20,9 @@ from api.repositories.jobRepository import JobRepository
 from api.repositories.organizationRepository import OrganizationRepository
 from models import Job
 from models.jobs import JobStatusEnum
+from services.ai_service.jd_parsing.orchestrator.jobDescriptionParsingOrchestrator import (
+    JobDescriptionParsingOrchestrator,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -216,6 +219,34 @@ class JobService:
 
         await self.job_repo.delete(job)
         await self._bump_jobs_list_cache_version()
+
+    async def parse_description_and_persist(
+        self,
+        *,
+        job_id: uuid.UUID,
+        user_id: uuid.UUID,
+    ) -> Job:
+        """Parse title/description via AI and persist it in parsed_job_description_json."""
+        job = await self.job_repo.find_by_id(job_id)
+        if job is None:
+            raise ValueError("Job not found")
+
+        is_member = await self.org_repo.user_is_org_member(user_id, job.organization_id)
+        if not is_member:
+            raise ValueError("User is not a member of this organization")
+
+        parsed = await JobDescriptionParsingOrchestrator().parse_job_description(
+            description=job.description,
+            title=job.title,
+        )
+
+        updated_job = await self.job_repo.update(
+            job,
+            parsed_job_description_json=parsed.model_dump(mode="json"),
+        )
+        await self._bump_jobs_list_cache_version()
+        logger.info("Parsed description persisted for job_id=%s", job_id)
+        return updated_job
 
     async def apply(
         self,

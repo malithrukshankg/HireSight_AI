@@ -43,6 +43,7 @@ class JobRead(BaseModel):
     employment_type: str
     status: JobStatusEnum
     requirements_json: Optional[dict[str, Any]] = None
+    parsed_job_description_json: Optional[dict[str, Any]] = None
     created_at: datetime
     updated_at: datetime
 
