@@ -20,6 +20,11 @@ from api.schemas.jobSchema import (
 from api.services.jobService import JobService
 from models import Job
 from models.jobs import JobStatusEnum
+from services.ai_service.shared.aiExceptions import (
+    GeminiConfigurationError,
+    GeminiInvocationError,
+    StructuredOutputValidationError,
+)
 
 
 class JobController:
@@ -42,6 +47,16 @@ class JobController:
             raise HTTPException(status_code=404, detail=str(e))
         if "not a member" in msg:
             raise HTTPException(status_code=403, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e))
+
+    def _handle_ai_error(
+        self,
+        e: GeminiConfigurationError | GeminiInvocationError | StructuredOutputValidationError,
+    ) -> None:
+        if isinstance(e, GeminiConfigurationError):
+            raise HTTPException(status_code=503, detail=str(e))
+        if isinstance(e, GeminiInvocationError):
+            raise HTTPException(status_code=502, detail=str(e))
         raise HTTPException(status_code=400, detail=str(e))
 
     async def create(self, payload: JobCreate, auth0_sub: str) -> Job:
@@ -170,3 +185,22 @@ class JobController:
             raise HTTPException(status_code=e.response.status_code, detail=detail)
         except ValueError as e:
             self._handle_error(e)
+
+    async def parse_description_and_persist(self, *, job_id: uuid.UUID, auth0_sub: str) -> Job:
+        user_repo = UserRepository(self.db)
+        user = await user_repo.find_by_auth0_sub(auth0_sub)
+        if user is None:
+            raise HTTPException(status_code=404, detail="User not found")
+        try:
+            return await self.service.parse_description_and_persist(
+                job_id=job_id,
+                user_id=user.id,
+            )
+        except ValueError as e:
+            self._handle_error(e)
+        except (
+            GeminiConfigurationError,
+            GeminiInvocationError,
+            StructuredOutputValidationError,
+        ) as e:
+            self._handle_ai_error(e)

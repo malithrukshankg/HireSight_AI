@@ -142,6 +142,22 @@ async def update_job(
     return await JobController(db).update(id, payload, auth0_sub)
 
 
+@jobRouter.post("/{id}/parse-description", response_model=JobRead)
+async def parse_job_description_for_job(
+    id: uuid.UUID,
+    db: DBSession,
+    principal: dict = Depends(require_admin_or_recruiter),
+):
+    """Parse title/description for a job and persist parsed output in parsed_job_description_json."""
+    auth0_sub = principal.get("sub")
+    if not auth0_sub:
+        raise HTTPException(status_code=400, detail="auth0_sub not found in token")
+    return await JobController(db).parse_description_and_persist(
+        job_id=id,
+        auth0_sub=auth0_sub,
+    )
+
+
 @jobRouter.delete("/{id}", status_code=204)
 async def delete_job(
     id: uuid.UUID,
