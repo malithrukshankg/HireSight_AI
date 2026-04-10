@@ -34,7 +34,10 @@ class GeminiClient:
 
     def is_configured(self) -> bool:
         key = self._api_key
-        return bool(key and str(key).strip())
+        model_name = self._model_name
+        return bool(
+            key and str(key).strip() and model_name and str(model_name).strip()
+        )
 
     def generate_json_text(
         self,
@@ -48,7 +51,12 @@ class GeminiClient:
         Returns the raw text (JSON string); validate with `structuredOutputHelper`.
         """
         if not self.is_configured():
-            raise GeminiConfigurationError("GEMINI_API_KEY is not set or empty")
+            raise GeminiConfigurationError(
+                "Gemini is not configured. Set GEMINI_API_KEY and GEMINI_MODEL."
+            )
+
+        if self._timeout_seconds <= 0:
+            raise GeminiConfigurationError("GEMINI_TIMEOUT_SECONDS must be greater than 0")
 
         genai.configure(api_key=self._api_key.strip())
 
@@ -69,7 +77,7 @@ class GeminiClient:
                 request_options={"timeout": self._timeout_seconds},
             )
         except google_exceptions.GoogleAPIError as e:
-            logger.warning("Gemini API error: %s", e)
+            logger.warning("Gemini API error (model=%s): %s", self._model_name, e)
             raise GeminiInvocationError("Gemini request failed", cause=e) from e
         except Exception as e:
             logger.exception("Unexpected Gemini error")
