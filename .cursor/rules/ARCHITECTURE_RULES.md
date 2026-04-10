@@ -49,6 +49,7 @@ The API Gateway is responsible for:
 - Public routing and delegation to internal services (HTTP)
 - Basic middleware (logging, rate limiting)
 - **Job and candidate domain** ownership as implemented today (persistence in gateway-owned schema, business rules for jobs/candidates)
+- AI processing for **gateway-owned domains** when implemented via the gateway AI service pattern (see §2.3)
 
 The API Gateway must **NOT** contain:
 
@@ -56,6 +57,32 @@ The API Gateway must **NOT** contain:
 - AI workflow orchestration or JD scoring pipelines (owned by **agent-service**)
 
 It forwards and delegates to those services via HTTP clients (e.g. `CV_SERVICE_URL`, `AGENT_SERVICE_URL`).
+
+### 2.3 AI Service Implementation Pattern (API Gateway)
+
+All AI-related functionality implemented in api-gateway must follow this structure:
+
+```text
+services/api-gateway/services/ai_service/
+  <feature_name>/
+    agents/
+    prompts/
+    orchestrator/
+    utils/
+    schemas/
+  shared/
+```
+
+Rules:
+
+- AI business logic must live under `services/ai_service/` (not in routers/controllers).
+- Routers and controllers must remain thin: validate/authn/authz/delegate/map errors.
+- Do not create flat AI files directly under `services/`.
+- `shared/` contains reusable infrastructure (Gemini clients, AI exceptions, structured output helpers).
+- Feature folders (e.g. `jd_parsing/`, future `jd_scoring/`, `interview/`, `recommendation/`) must keep `agent` and `orchestrator` boundaries clear so LangGraph can wrap orchestrators later with minimal refactor.
+- Domain ownership remains mandatory:
+  - If a domain is owned by api-gateway (e.g. jobs), AI processing for that domain may live in api-gateway.
+  - If a domain is owned by another service, do not duplicate ownership in api-gateway.
 
 ---
 
