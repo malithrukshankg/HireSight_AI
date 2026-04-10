@@ -57,6 +57,10 @@ class Job(Base):
         JSONB,
         nullable=True,
     )
+    parsed_job_description_json: Mapped[dict[str, Any] | None] = mapped_column(
+        JSONB,
+        nullable=True,
+    )
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
