@@ -11,12 +11,13 @@ service dependency at import time (production still loads real config).
 
 from __future__ import annotations
 
+import json
 import sys
 import unittest
 from types import ModuleType, SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 
-# Register before importing gateway packages that pull in ``config.settings``.
+# Register before importing gateway packages that pull in config.settings.
 _cfg = ModuleType("config")
 _cfg.settings = SimpleNamespace(
     GEMINI_API_KEY="test-key",
@@ -29,6 +30,7 @@ sys.modules["config"] = _cfg
 from services.ai_service.jd_parsing.agents.jobDescriptionParsingAgent import (
     JobDescriptionParsingAgent,
 )
+from services.ai_service.jd_parsing.schemas.parsedJobDescription import ParsedJobDescription
 from services.ai_service.shared.aiExceptions import StructuredOutputValidationError
 from services.ai_service.shared.geminiClient import GeminiClient
 
@@ -41,9 +43,10 @@ _VALID_MINIMAL_JSON = (
 
 
 class TestJobDescriptionParsingAgent(unittest.IsolatedAsyncioTestCase):
-    async def test_parse_uses_generate_json_text_async_and_returns_model(self) -> None:
+    async def test_parse_uses_generate_structured_async_and_returns_model(self) -> None:
+        parsed = ParsedJobDescription.model_validate(json.loads(_VALID_MINIMAL_JSON))
         gemini = MagicMock(spec=GeminiClient)
-        gemini.generate_json_text_async = AsyncMock(return_value=_VALID_MINIMAL_JSON)
+        gemini.generate_structured_async = AsyncMock(return_value=parsed)
         agent = JobDescriptionParsingAgent(gemini_client=gemini)
 
         result = await agent.parse(
@@ -51,17 +54,20 @@ class TestJobDescriptionParsingAgent(unittest.IsolatedAsyncioTestCase):
             system_instruction="sys",
         )
 
-        gemini.generate_json_text_async.assert_awaited_once_with(
+        gemini.generate_structured_async.assert_awaited_once_with(
             user_content="prompt body",
             system_instruction="sys",
+            model_cls=ParsedJobDescription,
         )
         self.assertEqual(result.summary, "Build widgets")
         self.assertEqual(result.responsibilities, ["Ship code"])
         self.assertEqual(result.required_skills, ["Python"])
 
-    async def test_parse_invalid_json_raises_structured_output_error(self) -> None:
+    async def test_parse_propagates_structured_output_error(self) -> None:
         gemini = MagicMock(spec=GeminiClient)
-        gemini.generate_json_text_async = AsyncMock(return_value="not json")
+        gemini.generate_structured_async = AsyncMock(
+            side_effect=StructuredOutputValidationError("bad output")
+        )
         agent = JobDescriptionParsingAgent(gemini_client=gemini)
 
         with self.assertRaises(StructuredOutputValidationError):

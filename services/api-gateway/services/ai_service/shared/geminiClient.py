@@ -4,16 +4,24 @@ from __future__ import annotations
 
 import logging
 import threading
+from typing import TypeVar
 
 from google import genai
 from google.genai import errors
 from google.genai import types
+from pydantic import BaseModel
 
 from config import settings
 from services.ai_service.shared.aiExceptions import (
     GeminiConfigurationError,
     GeminiInvocationError,
 )
+from services.ai_service.shared.structuredOutputHelper import (
+    parse_and_validate,
+    validate_pydantic,
+)
+
+TModel = TypeVar("TModel", bound=BaseModel)
 
 logger = logging.getLogger(__name__)
 
@@ -32,6 +40,7 @@ def _build_generate_config(
     *,
     system_instruction: str | None,
     temperature: float,
+    response_schema: type[BaseModel] | None = None,
 ) -> types.GenerateContentConfig:
     config_kwargs: dict = {
         "temperature": temperature,
@@ -39,6 +48,8 @@ def _build_generate_config(
     }
     if system_instruction is not None:
         config_kwargs["system_instruction"] = system_instruction
+    if response_schema is not None:
+        config_kwargs["response_schema"] = response_schema
     return types.GenerateContentConfig(**config_kwargs)
 
 
@@ -60,6 +71,36 @@ def _text_from_response(response: object) -> str:
     if not text:
         raise GeminiInvocationError("Gemini returned empty text")
     return text
+
+
+def _structured_model_from_response(response: object, model_cls: type[TModel]) -> TModel:
+    """Prefer SDK `response.parsed`; fall back to JSON text + `parse_and_validate`."""
+    if not response.candidates:
+        block = getattr(response, "prompt_feedback", None)
+        logger.warning("Gemini returned no candidates; prompt_feedback=%s", block)
+        raise GeminiInvocationError("Gemini returned no response candidates")
+
+    parsed = getattr(response, "parsed", None)
+    if parsed is not None:
+        if isinstance(parsed, model_cls):
+            return parsed
+        if isinstance(parsed, dict):
+            return validate_pydantic(parsed, model_cls)
+        if isinstance(parsed, BaseModel):
+            return validate_pydantic(parsed.model_dump(mode="json"), model_cls)
+
+    try:
+        text = (response.text or "").strip()
+    except ValueError as e:
+        logger.warning("Gemini response.text unavailable: %s", e)
+        raise GeminiInvocationError(
+            "Gemini response blocked or incomplete",
+            cause=e,
+        ) from e
+
+    if not text:
+        raise GeminiInvocationError("Gemini returned empty text")
+    return parse_and_validate(text, model_cls)
 
 
 def _get_shared_genai_client() -> genai.Client:
@@ -95,7 +136,7 @@ async def close_shared_gemini_sdk_client_async() -> None:
 
 
 class GeminiClient:
-    """Gemini client; prefer `generate_json_text_async` from async FastAPI code paths."""
+    """Gemini client: use `generate_structured_async` for Pydantic output (SDK response_schema)."""
 
     def __init__(
         self,
@@ -164,6 +205,50 @@ class GeminiClient:
 
         return _text_from_response(response)
 
+    def generate_structured(
+        self,
+        *,
+        user_content: str,
+        system_instruction: str | None = None,
+        temperature: float = 0.2,
+        model_cls: type[TModel],
+    ) -> TModel:
+        """
+        Synchronous structured generate using SDK `response_schema` (Pydantic model).
+        Falls back to parsing `response.text` when `response.parsed` is absent.
+        """
+        if not self.is_configured():
+            raise GeminiConfigurationError(
+                "Gemini is not configured. Set GEMINI_API_KEY and GEMINI_MODEL."
+            )
+
+        if self._timeout_seconds <= 0:
+            raise GeminiConfigurationError("GEMINI_TIMEOUT_SECONDS must be greater than 0")
+
+        timeout_ms = int(self._timeout_seconds * 1000)
+        http_options = _client_http_options(timeout_ms=timeout_ms)
+        config = _build_generate_config(
+            system_instruction=system_instruction,
+            temperature=temperature,
+            response_schema=model_cls,
+        )
+
+        try:
+            with genai.Client(api_key=self._api_key.strip(), http_options=http_options) as client:
+                response = client.models.generate_content(
+                    model=self._model_name,
+                    contents=user_content,
+                    config=config,
+                )
+        except errors.APIError as e:
+            logger.warning("Gemini API error (model=%s): %s", self._model_name, e)
+            raise GeminiInvocationError("Gemini request failed", cause=e) from e
+        except Exception as e:
+            logger.exception("Unexpected Gemini error")
+            raise GeminiInvocationError("Gemini request failed unexpectedly", cause=e) from e
+
+        return _structured_model_from_response(response, model_cls)
+
     async def generate_json_text_async(
         self,
         *,
@@ -213,3 +298,55 @@ class GeminiClient:
             raise GeminiInvocationError("Gemini request failed unexpectedly", cause=e) from e
 
         return _text_from_response(response)
+
+    async def generate_structured_async(
+        self,
+        *,
+        user_content: str,
+        system_instruction: str | None = None,
+        temperature: float = 0.2,
+        model_cls: type[TModel],
+    ) -> TModel:
+        """
+        Async structured generate using SDK `response_schema` (Pydantic model).
+        Falls back to parsing `response.text` when `response.parsed` is absent.
+        """
+        if not self.is_configured():
+            raise GeminiConfigurationError(
+                "Gemini is not configured. Set GEMINI_API_KEY and GEMINI_MODEL."
+            )
+
+        if self._timeout_seconds <= 0:
+            raise GeminiConfigurationError("GEMINI_TIMEOUT_SECONDS must be greater than 0")
+
+        config = _build_generate_config(
+            system_instruction=system_instruction,
+            temperature=temperature,
+            response_schema=model_cls,
+        )
+
+        try:
+            if self._uses_shared_backend():
+                client = _get_shared_genai_client()
+                response = await client.aio.models.generate_content(
+                    model=self._model_name,
+                    contents=user_content,
+                    config=config,
+                )
+            else:
+                timeout_ms = int(self._timeout_seconds * 1000)
+                http_options = _client_http_options(timeout_ms=timeout_ms)
+                with genai.Client(api_key=self._api_key.strip(), http_options=http_options) as client:
+                    response = await client.aio.models.generate_content(
+                        model=self._model_name,
+                        contents=user_content,
+                        config=config,
+                    )
+        except errors.APIError as e:
+            logger.warning("Gemini API error (model=%s): %s", self._model_name, e)
+            raise GeminiInvocationError("Gemini request failed", cause=e) from e
+        except Exception as e:
+            logger.exception("Unexpected Gemini error")
+            raise GeminiInvocationError("Gemini request failed unexpectedly", cause=e) from e
+
+        return _structured_model_from_response(response, model_cls)
