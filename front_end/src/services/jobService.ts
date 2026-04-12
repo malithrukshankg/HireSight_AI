@@ -99,6 +99,34 @@ export async function getJobById(
 }
 
 /**
+ * Parse title/description with AI and persist parsed_job_description_json.
+ * Admin or recruiter; user must belong to the job's organization.
+ */
+export async function parseJobDescription(
+  accessToken: string,
+  id: string
+): Promise<Job> {
+  const response = await fetch(`${API_BASE_URL}/jobs/${id}/parse-description`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+
+  if (!response.ok) {
+    const err = await response
+      .json()
+      .catch(() => ({ detail: response.statusText }));
+    throw new Error(
+      (err as { detail?: string }).detail ||
+        `Parse job description failed: ${response.status}`
+    );
+  }
+
+  return response.json() as Promise<Job>;
+}
+
+/**
  * Create a new job. User must be a member of the organization.
  */
 export async function createJob(

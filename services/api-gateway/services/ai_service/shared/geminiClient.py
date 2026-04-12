@@ -21,6 +21,13 @@ _shared_genai_client: genai.Client | None = None
 _shared_lock = threading.Lock()
 
 
+def _client_http_options(*, timeout_ms: int) -> types.HttpOptions:
+    ver = (settings.GEMINI_API_VERSION or "").strip()
+    if ver:
+        return types.HttpOptions(timeout=timeout_ms, api_version=ver)
+    return types.HttpOptions(timeout=timeout_ms)
+
+
 def _build_generate_config(
     *,
     system_instruction: str | None,
@@ -64,7 +71,7 @@ def _get_shared_genai_client() -> genai.Client:
         if _shared_genai_client is None:
             _shared_genai_client = genai.Client(
                 api_key=key,
-                http_options=types.HttpOptions(timeout=timeout_ms),
+                http_options=_client_http_options(timeout_ms=timeout_ms),
             )
         return _shared_genai_client
 
@@ -135,7 +142,7 @@ class GeminiClient:
             raise GeminiConfigurationError("GEMINI_TIMEOUT_SECONDS must be greater than 0")
 
         timeout_ms = int(self._timeout_seconds * 1000)
-        http_options = types.HttpOptions(timeout=timeout_ms)
+        http_options = _client_http_options(timeout_ms=timeout_ms)
         config = _build_generate_config(
             system_instruction=system_instruction,
             temperature=temperature,
@@ -191,7 +198,7 @@ class GeminiClient:
                 )
             else:
                 timeout_ms = int(self._timeout_seconds * 1000)
-                http_options = types.HttpOptions(timeout=timeout_ms)
+                http_options = _client_http_options(timeout_ms=timeout_ms)
                 with genai.Client(api_key=self._api_key.strip(), http_options=http_options) as client:
                     response = await client.aio.models.generate_content(
                         model=self._model_name,
