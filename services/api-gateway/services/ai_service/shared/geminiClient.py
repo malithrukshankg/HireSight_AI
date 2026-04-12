@@ -1,11 +1,12 @@
-"""Thin wrapper around the Google Gemini API (`google-generativeai`)."""
+"""Thin wrapper around the Google Gemini API (`google-genai`)."""
 
 from __future__ import annotations
 
 import logging
 
-import google.generativeai as genai
-from google.api_core import exceptions as google_exceptions
+from google import genai
+from google.genai import errors
+from google.genai import types
 
 from config import settings
 from services.ai_service.shared.aiExceptions import (
@@ -58,25 +59,24 @@ class GeminiClient:
         if self._timeout_seconds <= 0:
             raise GeminiConfigurationError("GEMINI_TIMEOUT_SECONDS must be greater than 0")
 
-        genai.configure(api_key=self._api_key.strip())
+        timeout_ms = int(self._timeout_seconds * 1000)
+        http_options = types.HttpOptions(timeout=timeout_ms)
 
-        model = genai.GenerativeModel(
-            self._model_name,
-            system_instruction=system_instruction,
-        )
-
-        generation_config = genai.GenerationConfig(
-            temperature=temperature,
-            response_mime_type="application/json",
-        )
+        config_kwargs: dict = {
+            "temperature": temperature,
+            "response_mime_type": "application/json",
+        }
+        if system_instruction is not None:
+            config_kwargs["system_instruction"] = system_instruction
 
         try:
-            response = model.generate_content(
-                user_content,
-                generation_config=generation_config,
-                request_options={"timeout": self._timeout_seconds},
-            )
-        except google_exceptions.GoogleAPIError as e:
+            with genai.Client(api_key=self._api_key.strip(), http_options=http_options) as client:
+                response = client.models.generate_content(
+                    model=self._model_name,
+                    contents=user_content,
+                    config=types.GenerateContentConfig(**config_kwargs),
+                )
+        except errors.APIError as e:
             logger.warning("Gemini API error (model=%s): %s", self._model_name, e)
             raise GeminiInvocationError("Gemini request failed", cause=e) from e
         except Exception as e:
