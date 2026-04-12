@@ -9,6 +9,7 @@ from api.routers.userRoute import userRouter
 from auth.auth0 import get_current_principal
 from config import settings
 from core.redis_client import close_redis, init_redis
+from services.ai_service.shared.geminiClient import close_shared_gemini_sdk_client_async
 
 
 app = FastAPI(title="HireSight API Gateway", version="0.1.0")
@@ -28,6 +29,7 @@ async def on_startup() -> None:
 
 @app.on_event("shutdown")
 async def on_shutdown() -> None:
+    await close_shared_gemini_sdk_client_async()
     await close_redis()
 
 app.add_middleware(
