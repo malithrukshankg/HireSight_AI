@@ -3,7 +3,15 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    """Loads from process environment and `.env` (same keys, uppercase)."""
+    """Loads from process environment and `.env` (same keys, uppercase).
+
+    Gemini (JD parsing and other gateway AI): set GEMINI_API_KEY. Use a
+    GEMINI_MODEL id that the current Gemini API supports (for example
+    gemini-2.5-flash); retired names such as gemini-1.5-flash often return 404.
+    Optional GEMINI_API_VERSION (for example v1) maps to the SDK HTTP api_version;
+    leave unset to use the google-genai default. After changing dependencies or
+    env, rebuild and restart the api-gateway process.
+    """
 
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -40,15 +48,30 @@ class Settings(BaseSettings):
         validation_alias="JOBS_CACHE_TTL_SECONDS",
     )
 
-    # Gemini (google-generativeai) — optional; see module docstring.
-    GEMINI_API_KEY: str | None = Field(default=None, validation_alias="GEMINI_API_KEY")
+    # Gemini (google-genai) — optional; see class docstring.
+    GEMINI_API_KEY: str | None = Field(
+        default=None,
+        validation_alias="GEMINI_API_KEY",
+        description="Gemini API key (Gemini Developer API). Required for JD parsing.",
+    )
     GEMINI_MODEL: str = Field(
-        default="gemini-2.0-flash",
+        default="gemini-2.5-flash",
         validation_alias="GEMINI_MODEL",
+        description="Model id passed to generateContent (must be supported for your API version).",
     )
     GEMINI_TIMEOUT_SECONDS: int = Field(
         default=60,
         validation_alias="GEMINI_TIMEOUT_SECONDS",
+        ge=1,
+        description="HTTP timeout for each Gemini request, in seconds.",
+    )
+    GEMINI_API_VERSION: str | None = Field(
+        default=None,
+        validation_alias="GEMINI_API_VERSION",
+        description=(
+            "Optional REST API version for Gemini (e.g. v1, v1alpha). "
+            "Forwarded to google-genai HttpOptions.api_version; omit for SDK default."
+        ),
     )
 
 
