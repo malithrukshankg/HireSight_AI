@@ -62,6 +62,15 @@ class Job(Base):
         nullable=True,
     )
 
+    jd_content_hash: Mapped[str | None] = mapped_column(Text, nullable=True)
+    jd_parse_version: Mapped[str | None] = mapped_column(Text, nullable=True)
+    jd_model_version: Mapped[str | None] = mapped_column(Text, nullable=True)
+    jd_prompt_version: Mapped[str | None] = mapped_column(Text, nullable=True)
+    jd_parsed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),
