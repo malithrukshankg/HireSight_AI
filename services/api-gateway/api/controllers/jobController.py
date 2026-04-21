@@ -10,6 +10,7 @@ from api.repositories.candidateRepository import CandidateRepository
 from api.repositories.jobRepository import JobRepository
 from api.repositories.organizationRepository import OrganizationRepository
 from api.repositories.userRepository import UserRepository
+from api.schemas.internalJobAiContextSchema import JdParseMetadata, JobAiContextResponse
 from api.schemas.jobSchema import (
     JobApplicationRead,
     JobApplyResponse,
@@ -185,6 +186,25 @@ class JobController:
             raise HTTPException(status_code=e.response.status_code, detail=detail)
         except ValueError as e:
             self._handle_error(e)
+
+    async def get_ai_context(self, job_id: uuid.UUID) -> JobAiContextResponse:
+        try:
+            job = await self.service.get_by_id(job_id)
+        except ValueError as e:
+            self._handle_error(e)
+        return JobAiContextResponse(
+            job_id=job.id,
+            title=job.title,
+            description=job.description,
+            parsed_job_description=job.parsed_job_description_json,
+            parse_metadata=JdParseMetadata(
+                parse_version=job.jd_parse_version,
+                model_version=job.jd_model_version,
+                prompt_version=job.jd_prompt_version,
+                content_hash=job.jd_content_hash,
+                parsed_at=job.jd_parsed_at,
+            ),
+        )
 
     async def parse_description_and_persist(self, *, job_id: uuid.UUID, auth0_sub: str) -> Job:
         user_repo = UserRepository(self.db)
