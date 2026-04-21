@@ -74,5 +74,16 @@ class Settings(BaseSettings):
         ),
     )
 
+    # JD parsing versioning - bump when the prompt or output schema changes so that
+    # the agent-service knows to re-parse instead of reusing a stale result.
+    JD_PARSE_VERSION: str = Field(
+        default="1.0",
+        validation_alias="JD_PARSE_VERSION",
+    )
+    JD_PROMPT_VERSION: str = Field(
+        default="jd-parse-v1",
+        validation_alias="JD_PROMPT_VERSION",
+    )
+
 
 settings = Settings()

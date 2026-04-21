@@ -1,5 +1,7 @@
+import hashlib
 import logging
 import uuid
+from datetime import datetime, timezone
 from typing import Optional
 
 from fastapi import UploadFile
@@ -235,6 +237,8 @@ class JobService:
         if not is_member:
             raise ValueError("User is not a member of this organization")
 
+        content_hash = hashlib.sha256(job.description.encode()).hexdigest()
+
         parsed = await JobDescriptionParsingOrchestrator().parse_job_description(
             description=job.description,
             title=job.title,
@@ -243,6 +247,11 @@ class JobService:
         updated_job = await self.job_repo.update(
             job,
             parsed_job_description_json=parsed.model_dump(mode="json"),
+            jd_content_hash=content_hash,
+            jd_parse_version=settings.JD_PARSE_VERSION,
+            jd_model_version=settings.GEMINI_MODEL,
+            jd_prompt_version=settings.JD_PROMPT_VERSION,
+            jd_parsed_at=datetime.now(timezone.utc),
         )
         await self._bump_jobs_list_cache_version()
         logger.info("Parsed description persisted for job_id=%s", job_id)
