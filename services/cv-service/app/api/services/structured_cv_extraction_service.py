@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 
 import instructor
-from openai import OpenAI
+from openai import AsyncOpenAI
 from pydantic import ValidationError
 
 from app.api.schemas.cv_schema import CVStructuredProfile
@@ -41,7 +41,7 @@ class StructuredCVExtractionService:
                 "OPENAI_API_KEY is not configured for structured CV extraction"
             )
 
-        openai_client = OpenAI(api_key=self.api_key)
+        openai_client = AsyncOpenAI(api_key=self.api_key)
         self._client = instructor.from_openai(openai_client)
         return self._client
 
@@ -65,7 +65,7 @@ class StructuredCVExtractionService:
             },
         ]
 
-    def extract_from_raw_text(self, *, raw_text: str) -> CVStructuredProfile:
+    async def extract_from_raw_text(self, *, raw_text: str) -> CVStructuredProfile:
         text = (raw_text or "").strip()
         if not text:
             raise StructuredExtractionValidationError(
@@ -76,7 +76,7 @@ class StructuredCVExtractionService:
         client = self._get_client()
 
         try:
-            result = client.chat.completions.create(
+            result = await client.chat.completions.create(
                 model=self.model,
                 response_model=CVStructuredProfile,
                 messages=self._build_messages(raw_text=text),

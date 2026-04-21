@@ -55,9 +55,9 @@ class CvService:
             max_retries=settings.CV_STRUCTURED_MAX_RETRIES,
         )
 
-    def extract_structured_profile_from_text(self, *, raw_text: str) -> CVStructuredProfile:
+    async def extract_structured_profile_from_text(self, *, raw_text: str) -> CVStructuredProfile:
         try:
-            return self.structured_extraction_service.extract_from_raw_text(raw_text=raw_text)
+            return await self.structured_extraction_service.extract_from_raw_text(raw_text=raw_text)
         except StructuredExtractionConfigError as e:
             raise CVValidationError(str(e)) from e
         except StructuredExtractionValidationError as e:
@@ -74,7 +74,7 @@ class CvService:
         if not raw_text:
             raise CVValidationError("CV extracted text is missing; run text extraction first")
 
-        profile = self.extract_structured_profile_from_text(raw_text=raw_text)
+        profile = await self.extract_structured_profile_from_text(raw_text=raw_text)
         persisted_cv = await self.repo.update_extraction_result(
             cv_id=cv.id,
             extracted_text=raw_text,
@@ -278,7 +278,7 @@ class CvService:
             return "skipped", None, "Structured extraction requires non-empty extracted text"
 
         try:
-            profile = self.extract_structured_profile_from_text(raw_text=text)
+            profile = await self.extract_structured_profile_from_text(raw_text=text)
             persisted_cv = await self.repo.update_extraction_result(
                 cv_id=cv_id,
                 extracted_text=text,
