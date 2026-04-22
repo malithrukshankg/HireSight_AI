@@ -5,6 +5,7 @@ from fastapi.responses import Response
 
 from app.api.controllers.cv_controller import CvController
 from app.api.schemas.cv_schema import (
+    CVAiContextResponse,
     CVByCandidateResponse,
     CVDetailResponse,
     CVExtractionResponse,
@@ -54,6 +55,15 @@ async def get_cv_detail(
     db: DBSession,
 ):
     return await CvController(db).get_cv_detail(cv_id)
+
+
+@internal_router.get("/cv/{cv_id}/ai-context", response_model=CVAiContextResponse)
+async def get_cv_ai_context(
+    cv_id: uuid.UUID,
+    db: DBSession,
+):
+    """Return raw CV text, parsed profile, and parse metadata for agent-service consumption."""
+    return await CvController(db).get_cv_ai_context(cv_id)
 
 
 @internal_router.get("/cv/{cv_id}/file")
