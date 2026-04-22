@@ -117,3 +117,19 @@ class CVStructuredExtractionResponse(BaseModel):
     structured_extraction_status: str
     parsed_profile_json: CVStructuredProfile | None = None
     structured_extraction_error: str | None = None
+
+
+class CvParseMetadata(BaseModel):
+    parse_version: str | None = None
+    model_version: str | None = None
+    prompt_version: str | None = None
+    content_hash: str | None = None
+    parsed_at: datetime | None = None
+
+
+class CVAiContextResponse(BaseModel):
+    cv_id: uuid.UUID
+    candidate_id: uuid.UUID
+    extracted_text: str | None = None
+    parsed_profile: dict[str, Any] | None = None
+    parse_metadata: CvParseMetadata

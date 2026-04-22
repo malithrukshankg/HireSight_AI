@@ -520,6 +520,24 @@ class CvService:
             "structured_extraction_error": structured_extraction_error,
         }
 
+    async def get_cv_ai_context(self, cv_id: uuid.UUID) -> dict:
+        cv = await self.repo.find_by_id(cv_id)
+        if cv is None:
+            raise CVNotFoundError("CV not found")
+        return {
+            "cv_id": cv.id,
+            "candidate_id": cv.candidate_id,
+            "extracted_text": cv.extracted_text,
+            "parsed_profile": cv.parsed_profile_json,
+            "parse_metadata": {
+                "parse_version": cv.parse_version,
+                "model_version": cv.model_version,
+                "prompt_version": cv.prompt_version,
+                "content_hash": cv.content_hash,
+                "parsed_at": cv.parsed_at,
+            },
+        }
+
     async def get_cv_detail(self, cv_id: uuid.UUID) -> dict:
         cv = await self.repo.find_by_id(cv_id)
         if cv is None:
