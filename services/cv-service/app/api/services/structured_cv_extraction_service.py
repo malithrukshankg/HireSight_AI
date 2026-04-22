@@ -1,12 +1,16 @@
 from __future__ import annotations
 
+import hashlib
 import logging
+from dataclasses import dataclass
+from datetime import datetime, timezone
 
 import instructor
 from openai import AsyncOpenAI
 from pydantic import ValidationError
 
 from app.api.schemas.cv_schema import CVStructuredProfile
+from app.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -21,6 +25,17 @@ class StructuredExtractionProviderError(RuntimeError):
 
 class StructuredExtractionValidationError(RuntimeError):
     pass
+
+
+@dataclass
+class CVExtractionResult:
+    """Parsed CV profile together with the metadata needed for cache validity checks."""
+    profile: CVStructuredProfile
+    content_hash: str
+    parse_version: str
+    model_version: str
+    prompt_version: str
+    parsed_at: datetime
 
 
 class StructuredCVExtractionService:
@@ -65,18 +80,19 @@ class StructuredCVExtractionService:
             },
         ]
 
-    async def extract_from_raw_text(self, *, raw_text: str) -> CVStructuredProfile:
+    async def extract_from_raw_text(self, *, raw_text: str) -> CVExtractionResult:
         text = (raw_text or "").strip()
         if not text:
             raise StructuredExtractionValidationError(
                 "CV extracted text is empty; cannot run structured extraction"
             )
 
+        content_hash = hashlib.sha256(text.encode("utf-8")).hexdigest()
         logger.info("Structured CV extraction started: text_chars=%s", len(text))
         client = self._get_client()
 
         try:
-            result = await client.chat.completions.create(
+            profile = await client.chat.completions.create(
                 model=self.model,
                 response_model=CVStructuredProfile,
                 messages=self._build_messages(raw_text=text),
@@ -84,7 +100,14 @@ class StructuredCVExtractionService:
                 max_retries=self.max_retries,
             )
             logger.info("Structured CV extraction succeeded: text_chars=%s", len(text))
-            return result
+            return CVExtractionResult(
+                profile=profile,
+                content_hash=content_hash,
+                parse_version=settings.CV_PARSE_VERSION,
+                model_version=self.model,
+                prompt_version=settings.CV_PROMPT_VERSION,
+                parsed_at=datetime.now(timezone.utc),
+            )
         except ValidationError as e:
             logger.exception("Structured CV extraction validation failed")
             raise StructuredExtractionValidationError(

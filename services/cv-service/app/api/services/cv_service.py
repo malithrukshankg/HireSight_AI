@@ -12,8 +12,8 @@ from botocore.exceptions import BotoCoreError, ClientError
 from fastapi import UploadFile
 
 from app.api.repositories.cv_repository import CVRepository
-from app.api.schemas.cv_schema import CVStructuredProfile
 from app.api.services.structured_cv_extraction_service import (
+    CVExtractionResult,
     StructuredCVExtractionService,
     StructuredExtractionConfigError,
     StructuredExtractionProviderError,
@@ -55,7 +55,7 @@ class CvService:
             max_retries=settings.CV_STRUCTURED_MAX_RETRIES,
         )
 
-    async def extract_structured_profile_from_text(self, *, raw_text: str) -> CVStructuredProfile:
+    async def extract_structured_profile_from_text(self, *, raw_text: str) -> CVExtractionResult:
         try:
             return await self.structured_extraction_service.extract_from_raw_text(raw_text=raw_text)
         except StructuredExtractionConfigError as e:
@@ -74,11 +74,16 @@ class CvService:
         if not raw_text:
             raise CVValidationError("CV extracted text is missing; run text extraction first")
 
-        profile = await self.extract_structured_profile_from_text(raw_text=raw_text)
+        result = await self.extract_structured_profile_from_text(raw_text=raw_text)
         persisted_cv = await self.repo.update_extraction_result(
             cv_id=cv.id,
             extracted_text=raw_text,
-            parsed_profile_json=profile.model_dump(),
+            parsed_profile_json=result.profile.model_dump(),
+            content_hash=result.content_hash,
+            parse_version=result.parse_version,
+            model_version=result.model_version,
+            prompt_version=result.prompt_version,
+            parsed_at=result.parsed_at,
         )
         if persisted_cv is None:
             raise CVNotFoundError("CV not found during structured extraction persistence")
@@ -86,7 +91,7 @@ class CvService:
         return {
             "id": persisted_cv.id,
             "structured_extraction_status": "completed",
-            "parsed_profile_json": profile.model_dump(),
+            "parsed_profile_json": result.profile.model_dump(),
             "structured_extraction_error": None,
         }
 
@@ -278,11 +283,16 @@ class CvService:
             return "skipped", None, "Structured extraction requires non-empty extracted text"
 
         try:
-            profile = await self.extract_structured_profile_from_text(raw_text=text)
+            result = await self.extract_structured_profile_from_text(raw_text=text)
             persisted_cv = await self.repo.update_extraction_result(
                 cv_id=cv_id,
                 extracted_text=text,
-                parsed_profile_json=profile.model_dump(),
+                parsed_profile_json=result.profile.model_dump(),
+                content_hash=result.content_hash,
+                parse_version=result.parse_version,
+                model_version=result.model_version,
+                prompt_version=result.prompt_version,
+                parsed_at=result.parsed_at,
             )
             if persisted_cv is None:
                 logger.error(
@@ -291,7 +301,7 @@ class CvService:
                 )
                 return "failed", None, "CV record not found during structured extraction persistence"
 
-            return "completed", profile.model_dump(), None
+            return "completed", result.profile.model_dump(), None
         except (CVValidationError, CVExtractionError) as e:
             # Keep upload successful even if structured extraction fails.
             logger.exception("Structured CV extraction failed: cv_id=%s", cv_id)
