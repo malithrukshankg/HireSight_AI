@@ -22,6 +22,11 @@ class Settings(BaseSettings):
     OPENAI_API_KEY: str | None = Field(default=None, alias="OPENAI_API_KEY")
     OPENAI_MODEL: str = Field(default="gpt-4o-mini", alias="OPENAI_MODEL")
     CV_STRUCTURED_MAX_RETRIES: int = Field(default=2, alias="CV_STRUCTURED_MAX_RETRIES")
-    
+
+    # CV parsing versioning - bump when the prompt or output schema changes so that
+    # the agent-service knows to re-parse instead of reusing a stale result.
+    CV_PARSE_VERSION: str = Field(default="1.0", alias="CV_PARSE_VERSION")
+    CV_PROMPT_VERSION: str = Field(default="cv-parse-v1", alias="CV_PROMPT_VERSION")
+
 
 settings = Settings()
