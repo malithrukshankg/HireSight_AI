@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.repositories.cv_repository import CVRepository
 from app.api.schemas.cv_schema import (
+    CVAiContextResponse,
     CVByCandidateResponse,
     CVDetailResponse,
     CVExtractionResponse,
@@ -88,6 +89,13 @@ class CvController:
             raise HTTPException(status_code=400, detail=str(e))
         except CVExtractionError as e:
             raise HTTPException(status_code=500, detail=str(e))
+
+    async def get_cv_ai_context(self, cv_id: uuid.UUID) -> CVAiContextResponse:
+        try:
+            result = await self.service.get_cv_ai_context(cv_id)
+            return CVAiContextResponse.model_validate(result)
+        except CVNotFoundError as e:
+            raise HTTPException(status_code=404, detail=str(e))
 
     async def get_cv_detail(self, cv_id: uuid.UUID) -> CVDetailResponse:
         try:
