@@ -60,6 +60,15 @@ class CV(Base):
     )
     embedding_version: Mapped[str | None] = mapped_column(Text, nullable=True)
 
+    content_hash: Mapped[str | None] = mapped_column(Text, nullable=True)
+    parse_version: Mapped[str | None] = mapped_column(Text, nullable=True)
+    model_version: Mapped[str | None] = mapped_column(Text, nullable=True)
+    prompt_version: Mapped[str | None] = mapped_column(Text, nullable=True)
+    parsed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),
