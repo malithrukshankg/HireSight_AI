@@ -1,4 +1,5 @@
 import uuid
+from datetime import datetime
 from typing import Any
 
 from sqlalchemy import select
@@ -68,6 +69,11 @@ class CVRepository:
         extracted_text: str,
         parsed_profile_json: dict[str, Any] | None = None,
         embedding_version: str | None = None,
+        content_hash: str | None = None,
+        parse_version: str | None = None,
+        model_version: str | None = None,
+        prompt_version: str | None = None,
+        parsed_at: datetime | None = None,
     ) -> CV | None:
         cv = await self.find_by_id(cv_id)
         if cv is None:
@@ -76,6 +82,11 @@ class CVRepository:
         cv.extracted_text = extracted_text
         cv.parsed_profile_json = parsed_profile_json
         cv.embedding_version = embedding_version
+        cv.content_hash = content_hash
+        cv.parse_version = parse_version
+        cv.model_version = model_version
+        cv.prompt_version = prompt_version
+        cv.parsed_at = parsed_at
         await self.db.commit()
         await self.db.refresh(cv)
         return cv
