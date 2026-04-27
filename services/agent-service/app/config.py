@@ -10,5 +10,14 @@ class Settings(BaseSettings):
     GATEWAY_SERVICE_URL: str = Field(default="http://localhost:8000", alias="GATEWAY_SERVICE_URL")
     HTTP_TIMEOUT_SECONDS: float = Field(default=30.0, alias="HTTP_TIMEOUT_SECONDS")
 
+    # Parse version constants - bump these to force re-parse on next run
+    EXPECTED_JD_PARSE_VERSION: str = Field(default="1.0", alias="EXPECTED_JD_PARSE_VERSION")
+    EXPECTED_JD_MODEL_VERSION: str = Field(default="gemini-2.5-flash", alias="EXPECTED_JD_MODEL_VERSION")
+    EXPECTED_JD_PROMPT_VERSION: str = Field(default="jd-parse-v1", alias="EXPECTED_JD_PROMPT_VERSION")
+
+    EXPECTED_CV_PARSE_VERSION: str = Field(default="1.0", alias="EXPECTED_CV_PARSE_VERSION")
+    EXPECTED_CV_MODEL_VERSION: str = Field(default="gpt-4o-mini", alias="EXPECTED_CV_MODEL_VERSION")
+    EXPECTED_CV_PROMPT_VERSION: str = Field(default="cv-parse-v1", alias="EXPECTED_CV_PROMPT_VERSION")
+
 
 settings = Settings()
