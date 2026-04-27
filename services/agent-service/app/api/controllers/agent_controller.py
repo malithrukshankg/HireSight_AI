@@ -7,4 +7,4 @@ class AgentController:
         self._orchestrator = AgentOrchestrator()
 
     async def jd_score(self, body: JDScoreRequest) -> JDScoreResponse:
-        return await self._orchestrator.run_jd_score_stub(body)
+        return await self._orchestrator.run_jd_score(body)
