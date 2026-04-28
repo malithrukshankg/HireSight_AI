@@ -22,13 +22,30 @@ logger = logging.getLogger(__name__)
 
 
 def _jd_routing(state: AgentState) -> str:
-    """Route after validate_jd_parse: skip to normalize_inputs if parse is fresh."""
+    """Route after validate_jd_parse.
+
+    fatal_error (set by fetch_jd_context) takes priority.
+    Otherwise: skip re-parse if the cached parse is still fresh.
+    """
+    if state.get("fatal_error"):
+        return "handle_error"
     return "normalize_inputs" if state["jd_parse_valid"] else "parse_jd"
 
 
 def _cv_routing(state: AgentState) -> str:
-    """Route after validate_cv_parse: skip to normalize_inputs if parse is fresh."""
+    """Route after validate_cv_parse.
+
+    fatal_error (set by fetch_cv_context) takes priority.
+    Otherwise: skip re-parse if the cached parse is still fresh.
+    """
+    if state.get("fatal_error"):
+        return "handle_error"
     return "normalize_inputs" if state["cv_parse_valid"] else "parse_cv"
+
+
+def _after_parse_routing(state: AgentState) -> str:
+    """Route after parse_jd or parse_cv: abort on error, otherwise continue."""
+    return "handle_error" if state.get("fatal_error") else "normalize_inputs"
 
 
 def build_graph() -> StateGraph:
@@ -66,29 +83,44 @@ def build_graph() -> StateGraph:
     builder.add_edge("fetch_jd_context", "validate_jd_parse")
     builder.add_edge("fetch_cv_context", "validate_cv_parse")
 
-    # --- Conditional: reuse fresh parse or trigger re-parse ---
+    # --- Conditional: abort on fatal_error, reuse fresh parse, or trigger re-parse ---
     builder.add_conditional_edges(
         "validate_jd_parse",
         _jd_routing,
-        {"parse_jd": "parse_jd", "normalize_inputs": "normalize_inputs"},
+        {
+            "parse_jd": "parse_jd",
+            "normalize_inputs": "normalize_inputs",
+            "handle_error": "handle_error",
+        },
     )
     builder.add_conditional_edges(
         "validate_cv_parse",
         _cv_routing,
-        {"parse_cv": "parse_cv", "normalize_inputs": "normalize_inputs"},
+        {
+            "parse_cv": "parse_cv",
+            "normalize_inputs": "normalize_inputs",
+            "handle_error": "handle_error",
+        },
     )
 
-    # --- Re-parse paths rejoin at normalize_inputs ---
-    # LangGraph fan-in: normalize_inputs waits for both branches before firing.
-    builder.add_edge("parse_jd", "normalize_inputs")
-    builder.add_edge("parse_cv", "normalize_inputs")
+    # --- Re-parse paths rejoin at normalize_inputs (or abort on error) ---
+    builder.add_conditional_edges(
+        "parse_jd",
+        _after_parse_routing,
+        {"normalize_inputs": "normalize_inputs", "handle_error": "handle_error"},
+    )
+    builder.add_conditional_edges(
+        "parse_cv",
+        _after_parse_routing,
+        {"normalize_inputs": "normalize_inputs", "handle_error": "handle_error"},
+    )
 
     # --- Sequential tail ---
     builder.add_edge("normalize_inputs", "run_matching_analysis")
     builder.add_edge("run_matching_analysis", "persist_results")
     builder.add_edge("persist_results", END)
 
-    # --- Error terminal (reachable in Phase 3 when nodes set fatal_error) ---
+    # --- Error terminal ---
     builder.add_edge("handle_error", END)
 
     return builder
