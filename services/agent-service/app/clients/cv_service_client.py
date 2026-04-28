@@ -33,3 +33,16 @@ class CvServiceClient:
             response = await client.get(f"{self.base_url}/internal/cv/{cv_id}/ai-context")
             response.raise_for_status()
             return response.json()
+
+    async def trigger_cv_parse(self, cv_id: uuid.UUID) -> None:
+        """Trigger synchronous structured CV extraction via cv-service.
+
+        Blocks until cv-service has finished the OpenAI call and persisted the result
+        (including parse metadata columns) to the database.
+        Raises httpx.HTTPStatusError on 4xx/5xx.
+        """
+        async with httpx.AsyncClient(timeout=self.timeout) as client:
+            response = await client.post(
+                f"{self.base_url}/internal/extract-structured/{cv_id}"
+            )
+            response.raise_for_status()
