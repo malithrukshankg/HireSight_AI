@@ -21,3 +21,15 @@ class CvServiceClient:
             response = await client.get(f"{self.base_url}/internal/cv/{cv_id}")
             response.raise_for_status()
             return response.json()
+
+    async def get_cv_ai_context(self, cv_id: uuid.UUID) -> dict[str, Any]:
+        """Fetch extracted CV text, parsed profile, and parse metadata.
+
+        Returns the CVAiContextResponse payload as a dict:
+            cv_id, candidate_id, extracted_text, parsed_profile, parse_metadata
+        Raises httpx.HTTPStatusError on 4xx/5xx.
+        """
+        async with httpx.AsyncClient(timeout=self.timeout) as client:
+            response = await client.get(f"{self.base_url}/internal/cv/{cv_id}/ai-context")
+            response.raise_for_status()
+            return response.json()
