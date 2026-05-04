@@ -2,9 +2,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 from database import Base
-from sqlalchemy import DateTime, ForeignKey, Text, CheckConstraint, func
+from sqlalchemy import DateTime, Float, ForeignKey, Text, CheckConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from datetime import datetime
 import uuid
 
@@ -69,6 +69,10 @@ class Candidate(Base):
         onupdate=func.now(),
         nullable=False,
     )
+
+    match_score: Mapped[float | None] = mapped_column(Float, nullable=True)
+    scores_json: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    matched_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     organization: Mapped["Organization"] = relationship(
         "Organization",
