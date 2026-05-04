@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import uuid
+
 from pydantic import BaseModel, Field
 
 
@@ -35,3 +37,38 @@ class NormalizedCV(BaseModel):
     experience_descriptions: list[str] = Field(default_factory=list)
     education_degrees: list[str] = Field(default_factory=list)
     projects: list[str] = Field(default_factory=list)
+
+
+class MatchingInput(BaseModel):
+    """All data required by run_matching_analysis to produce a score."""
+
+    job_id: uuid.UUID
+    cv_id: uuid.UUID
+    request_id: str
+    jd: NormalizedJD
+    cv: NormalizedCV
+
+
+class MatchingOutput(BaseModel):
+    """Scoring result produced by run_matching_analysis.
+
+    Scores are in [0.0, 1.0].
+
+    required_skills_coverage  -- fraction of JD required_skills matched by CV skills.
+    preferred_skills_coverage -- fraction of JD preferred_skills matched by CV skills.
+    overall_skills_coverage   -- fraction of JD all_skills matched by CV skills.
+    overall                   -- weighted aggregate; the primary sort key for ranking.
+
+    Weights (v1):
+        required_skills_coverage  * 0.6
+        preferred_skills_coverage * 0.25
+        overall_skills_coverage   * 0.15
+    """
+
+    required_skills_coverage: float = 0.0
+    preferred_skills_coverage: float = 0.0
+    overall_skills_coverage: float = 0.0
+    overall: float = 0.0
+    matched_required: list[str] = Field(default_factory=list)
+    matched_preferred: list[str] = Field(default_factory=list)
+    unmatched_required: list[str] = Field(default_factory=list)
