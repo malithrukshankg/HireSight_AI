@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from api.routers.cvRoute import cvRouter
 from api.routers.internalAiRoute import internalAiRouter
+from api.routers.internalCandidatesRoute import internalCandidatesRouter
 from api.routers.internalJobsRoute import internalJobsRouter
 from api.routers.jobRoute import jobRouter
 from api.routers.meRoute import meRouter
@@ -58,5 +59,6 @@ app.include_router(organizationRouter)
 app.include_router(jobRouter)
 app.include_router(cvRouter)
 app.include_router(internalAiRouter)
+app.include_router(internalCandidatesRouter)
 app.include_router(internalJobsRouter)
 
