@@ -12,10 +12,9 @@ class JDScoreRequest(BaseModel):
 
 
 class JDScoreResponse(BaseModel):
-    """Stub response until scoring pipeline is implemented."""
-
-    status: str = Field(description="Pipeline status, e.g. stub")
+    status: str = Field(description="'completed' or 'failed'")
     job_id: uuid.UUID
     cv_id: uuid.UUID
+    request_id: str
     scores: dict[str, Any] = Field(default_factory=dict)
     notes: str | None = None

@@ -60,20 +60,27 @@ class AgentOrchestrator:
                 status="failed",
                 job_id=request.job_id,
                 cv_id=request.cv_id,
+                request_id=request_id,
                 scores={},
                 notes=final_state["fatal_error"],
             )
 
-        scores: dict = {}
-        if final_state.get("matching_result"):
-            scores = final_state["matching_result"]
-        if final_state.get("match_score") is not None:
-            scores["overall"] = final_state["match_score"]
+        result = final_state.get("matching_result") or {}
+        scores = {
+            "overall": result.get("overall", 0.0),
+            "required_skills_coverage": result.get("required_skills_coverage", 0.0),
+            "preferred_skills_coverage": result.get("preferred_skills_coverage", 0.0),
+            "overall_skills_coverage": result.get("overall_skills_coverage", 0.0),
+            "matched_required": result.get("matched_required", []),
+            "matched_preferred": result.get("matched_preferred", []),
+            "unmatched_required": result.get("unmatched_required", []),
+        }
 
         return JDScoreResponse(
             status="completed",
             job_id=request.job_id,
             cv_id=request.cv_id,
+            request_id=request_id,
             scores=scores,
             notes=None,
         )
