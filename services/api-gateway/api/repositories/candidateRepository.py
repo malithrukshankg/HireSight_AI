@@ -1,4 +1,6 @@
 import uuid
+from datetime import datetime, timezone
+from typing import Any
 
 from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -58,6 +60,22 @@ class CandidateRepository:
         await self.db.commit()
         await self.db.refresh(candidate)
         return candidate
+
+    async def update_match_result(
+        self,
+        candidate_id: uuid.UUID,
+        match_score: float,
+        scores_json: dict[str, Any],
+    ) -> Candidate | None:
+        candidate = await self.find_by_id(candidate_id)
+        if candidate is None:
+            return None
+        return await self.update(
+            candidate,
+            match_score=match_score,
+            scores_json=scores_json,
+            matched_at=datetime.now(timezone.utc),
+        )
 
     async def list_by_job_id(
         self, job_id: uuid.UUID, organization_id: uuid.UUID
