@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import uuid
 
 import httpx
 
@@ -61,9 +62,13 @@ async def fetch_cv_context(state: AgentState) -> dict:
         request_id,
     )
 
+    candidate_id_raw = payload.get("candidate_id")
+    candidate_id = uuid.UUID(candidate_id_raw) if candidate_id_raw else None
+
     return {
         "cv_raw": payload.get("extracted_text"),
         "parsed_cv": payload.get("parsed_profile"),
         "cv_parse_metadata": parse_metadata,
+        "candidate_id": candidate_id,
         "steps_taken": state["steps_taken"] + ["fetch_cv_context"],
     }
