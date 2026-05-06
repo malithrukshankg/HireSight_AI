@@ -8,8 +8,10 @@ from psycopg_pool import AsyncConnectionPool
 
 from app.api.routes.agent_route import internal_agent_router
 from app.config import settings
+from app.core.logging_config import configure_logging
 from app.graph.jd_cv_matching_graph import build_graph, set_compiled_graph
 
+configure_logging()
 logger = logging.getLogger(__name__)
 
 
