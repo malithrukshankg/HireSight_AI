@@ -6,41 +6,26 @@ import uuid
 import httpx
 
 from app.clients.cv_service_client import CvServiceClient
+from app.graph.node_logger import get_node_logger
 from app.graph.state import AgentState
 
 logger = logging.getLogger(__name__)
 
 
 async def fetch_cv_context(state: AgentState) -> dict:
-    cv_id = state["cv_id"]
-    request_id = state["request_id"]
-
-    logger.info(
-        "fetch_cv_context: cv_id=%s request_id=%s",
-        cv_id,
-        request_id,
-    )
+    log = get_node_logger(logger, state, "fetch_cv_context")
+    log.info("fetching CV context")
 
     try:
-        payload = await CvServiceClient().get_cv_ai_context(cv_id)
+        payload = await CvServiceClient().get_cv_ai_context(state["cv_id"])
     except httpx.HTTPStatusError as exc:
-        logger.error(
-            "fetch_cv_context: cv-service returned %s for cv_id=%s request_id=%s",
-            exc.response.status_code,
-            cv_id,
-            request_id,
-        )
+        log.error("cv-service returned HTTP %s", exc.response.status_code)
         return {
             "fatal_error": f"Failed to fetch CV context: HTTP {exc.response.status_code}",
             "steps_taken": state["steps_taken"] + ["fetch_cv_context"],
         }
     except httpx.RequestError as exc:
-        logger.error(
-            "fetch_cv_context: request error cv_id=%s request_id=%s error=%s",
-            cv_id,
-            request_id,
-            exc,
-        )
+        log.error("request error: %s", exc)
         return {
             "fatal_error": f"Failed to fetch CV context: {exc}",
             "steps_taken": state["steps_taken"] + ["fetch_cv_context"],
@@ -55,12 +40,7 @@ async def fetch_cv_context(state: AgentState) -> dict:
         "parsed_at": raw_metadata.get("parsed_at"),
     }
 
-    logger.debug(
-        "fetch_cv_context: fetched cv_id=%s has_parsed_cv=%s request_id=%s",
-        cv_id,
-        payload.get("parsed_profile") is not None,
-        request_id,
-    )
+    log.debug("fetched has_parsed_cv=%s", payload.get("parsed_profile") is not None)
 
     candidate_id_raw = payload.get("candidate_id")
     candidate_id = uuid.UUID(candidate_id_raw) if candidate_id_raw else None

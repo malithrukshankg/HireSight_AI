@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 
 from app.graph.matching_schema import MatchingInput, MatchingOutput, NormalizedCV, NormalizedJD
+from app.graph.node_logger import get_node_logger
 from app.graph.state import AgentState
 
 logger = logging.getLogger(__name__)
@@ -64,41 +65,34 @@ def _score(jd: NormalizedJD, cv: NormalizedCV) -> MatchingOutput:
 
 
 async def run_matching_analysis(state: AgentState) -> dict:
-    job_id = state["job_id"]
-    cv_id = state["cv_id"]
-    request_id = state["request_id"]
+    log = get_node_logger(logger, state, "run_matching_analysis")
 
     normalized_jd = state.get("normalized_jd")
     normalized_cv = state.get("normalized_cv")
 
     if normalized_jd is None or normalized_cv is None:
         missing = "normalized_jd" if normalized_jd is None else "normalized_cv"
-        logger.error(
-            "run_matching_analysis: %s is None job_id=%s cv_id=%s request_id=%s",
-            missing, job_id, cv_id, request_id,
-        )
+        log.error("%s is missing from state", missing)
         return {
             "fatal_error": f"run_matching_analysis: {missing} is missing",
             "steps_taken": state["steps_taken"] + ["run_matching_analysis"],
         }
 
     matching_input = MatchingInput(
-        job_id=job_id,
-        cv_id=cv_id,
-        request_id=request_id,
+        job_id=state["job_id"],
+        cv_id=state["cv_id"],
+        request_id=state["request_id"],
         jd=NormalizedJD(**normalized_jd),
         cv=NormalizedCV(**normalized_cv),
     )
 
     result = _score(matching_input.jd, matching_input.cv)
 
-    logger.info(
-        "run_matching_analysis: overall=%.4f required=%.4f preferred=%.4f "
-        "job_id=%s cv_id=%s request_id=%s",
+    log.info(
+        "scoring complete overall=%.4f required=%.4f preferred=%.4f",
         result.overall,
         result.required_skills_coverage,
         result.preferred_skills_coverage,
-        job_id, cv_id, request_id,
     )
 
     return {

@@ -5,74 +5,45 @@ import logging
 import httpx
 
 from app.clients.cv_service_client import CvServiceClient
+from app.graph.node_logger import get_node_logger
 from app.graph.state import AgentState
 
 logger = logging.getLogger(__name__)
 
 
 async def parse_cv(state: AgentState) -> dict:
-    cv_id = state["cv_id"]
-    request_id = state["request_id"]
-
-    logger.info(
-        "parse_cv: triggering re-parse cv_id=%s request_id=%s",
-        cv_id,
-        request_id,
-    )
+    log = get_node_logger(logger, state, "parse_cv")
+    log.info("triggering CV re-parse")
 
     client = CvServiceClient()
 
     try:
-        await client.trigger_cv_parse(cv_id)
+        await client.trigger_cv_parse(state["cv_id"])
     except httpx.HTTPStatusError as exc:
-        logger.error(
-            "parse_cv: trigger failed status=%s cv_id=%s request_id=%s",
-            exc.response.status_code,
-            cv_id,
-            request_id,
-        )
+        log.error("trigger failed HTTP %s", exc.response.status_code)
         return {
             "fatal_error": f"CV parse trigger failed: HTTP {exc.response.status_code}",
             "steps_taken": state["steps_taken"] + ["parse_cv"],
         }
     except httpx.RequestError as exc:
-        logger.error(
-            "parse_cv: request error cv_id=%s request_id=%s error=%s",
-            cv_id,
-            request_id,
-            exc,
-        )
+        log.error("trigger request error: %s", exc)
         return {
             "fatal_error": f"CV parse trigger failed: {exc}",
             "steps_taken": state["steps_taken"] + ["parse_cv"],
         }
 
-    logger.info(
-        "parse_cv: trigger complete, re-fetching context cv_id=%s request_id=%s",
-        cv_id,
-        request_id,
-    )
+    log.info("trigger complete, re-fetching CV context")
 
     try:
-        payload = await client.get_cv_ai_context(cv_id)
+        payload = await client.get_cv_ai_context(state["cv_id"])
     except httpx.HTTPStatusError as exc:
-        logger.error(
-            "parse_cv: re-fetch failed status=%s cv_id=%s request_id=%s",
-            exc.response.status_code,
-            cv_id,
-            request_id,
-        )
+        log.error("re-fetch failed HTTP %s", exc.response.status_code)
         return {
             "fatal_error": f"CV context re-fetch failed: HTTP {exc.response.status_code}",
             "steps_taken": state["steps_taken"] + ["parse_cv"],
         }
     except httpx.RequestError as exc:
-        logger.error(
-            "parse_cv: re-fetch request error cv_id=%s request_id=%s error=%s",
-            cv_id,
-            request_id,
-            exc,
-        )
+        log.error("re-fetch request error: %s", exc)
         return {
             "fatal_error": f"CV context re-fetch failed: {exc}",
             "steps_taken": state["steps_taken"] + ["parse_cv"],

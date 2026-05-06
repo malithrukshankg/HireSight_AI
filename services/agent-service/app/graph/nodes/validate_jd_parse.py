@@ -4,6 +4,7 @@ import hashlib
 import logging
 
 from app.config import settings
+from app.graph.node_logger import get_node_logger
 from app.graph.state import AgentState
 
 logger = logging.getLogger(__name__)
@@ -23,8 +24,7 @@ def _compute_hash(text: str) -> str:
 
 
 async def validate_jd_parse(state: AgentState) -> dict:
-    job_id = state["job_id"]
-    request_id = state["request_id"]
+    log = get_node_logger(logger, state, "validate_jd_parse")
 
     parsed_jd = state.get("parsed_jd")
     jd_raw = state.get("jd_raw")
@@ -48,18 +48,9 @@ async def validate_jd_parse(state: AgentState) -> dict:
     valid = invalid_reason is None
 
     if valid:
-        logger.info(
-            "validate_jd_parse: VALID job_id=%s request_id=%s",
-            job_id,
-            request_id,
-        )
+        log.info("parse VALID")
     else:
-        logger.info(
-            "validate_jd_parse: INVALID reason=%s job_id=%s request_id=%s",
-            _INVALID_REASON_LABELS[invalid_reason],
-            job_id,
-            request_id,
-        )
+        log.info("parse INVALID reason=%s", _INVALID_REASON_LABELS[invalid_reason])
 
     return {
         "jd_parse_valid": valid,

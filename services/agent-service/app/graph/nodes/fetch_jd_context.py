@@ -5,41 +5,26 @@ import logging
 import httpx
 
 from app.clients.gateway_client import GatewayClient
+from app.graph.node_logger import get_node_logger
 from app.graph.state import AgentState
 
 logger = logging.getLogger(__name__)
 
 
 async def fetch_jd_context(state: AgentState) -> dict:
-    job_id = state["job_id"]
-    request_id = state["request_id"]
-
-    logger.info(
-        "fetch_jd_context: job_id=%s request_id=%s",
-        job_id,
-        request_id,
-    )
+    log = get_node_logger(logger, state, "fetch_jd_context")
+    log.info("fetching JD context")
 
     try:
-        payload = await GatewayClient().get_job_ai_context(job_id)
+        payload = await GatewayClient().get_job_ai_context(state["job_id"])
     except httpx.HTTPStatusError as exc:
-        logger.error(
-            "fetch_jd_context: gateway returned %s for job_id=%s request_id=%s",
-            exc.response.status_code,
-            job_id,
-            request_id,
-        )
+        log.error("api-gateway returned HTTP %s", exc.response.status_code)
         return {
             "fatal_error": f"Failed to fetch job context: HTTP {exc.response.status_code}",
             "steps_taken": state["steps_taken"] + ["fetch_jd_context"],
         }
     except httpx.RequestError as exc:
-        logger.error(
-            "fetch_jd_context: request error job_id=%s request_id=%s error=%s",
-            job_id,
-            request_id,
-            exc,
-        )
+        log.error("request error: %s", exc)
         return {
             "fatal_error": f"Failed to fetch job context: {exc}",
             "steps_taken": state["steps_taken"] + ["fetch_jd_context"],
@@ -54,12 +39,7 @@ async def fetch_jd_context(state: AgentState) -> dict:
         "parsed_at": raw_metadata.get("parsed_at"),
     }
 
-    logger.debug(
-        "fetch_jd_context: fetched job_id=%s has_parsed_jd=%s request_id=%s",
-        job_id,
-        payload.get("parsed_job_description") is not None,
-        request_id,
-    )
+    log.debug("fetched has_parsed_jd=%s", payload.get("parsed_job_description") is not None)
 
     return {
         "jd_raw": payload.get("description"),

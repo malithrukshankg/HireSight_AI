@@ -8,53 +8,35 @@ import httpx
 
 from app.clients.gateway_client import GatewayClient
 from app.config import settings
+from app.graph.node_logger import get_node_logger
 from app.graph.state import AgentState
 
 logger = logging.getLogger(__name__)
 
 
 async def parse_jd(state: AgentState) -> dict:
-    job_id = state["job_id"]
-    request_id = state["request_id"]
+    log = get_node_logger(logger, state, "parse_jd")
     jd_raw = state.get("jd_raw")
 
     if not jd_raw:
-        logger.error(
-            "parse_jd: jd_raw missing, cannot re-parse job_id=%s request_id=%s",
-            job_id,
-            request_id,
-        )
+        log.error("jd_raw missing from state, cannot re-parse")
         return {
             "fatal_error": "Cannot re-parse JD: raw text is missing from state",
             "steps_taken": state["steps_taken"] + ["parse_jd"],
         }
 
-    logger.info(
-        "parse_jd: calling parse endpoint job_id=%s request_id=%s",
-        job_id,
-        request_id,
-    )
+    log.info("calling parse endpoint")
 
     try:
         parsed_jd = await GatewayClient().parse_jd_text(description=jd_raw)
     except httpx.HTTPStatusError as exc:
-        logger.error(
-            "parse_jd: parse endpoint returned %s job_id=%s request_id=%s",
-            exc.response.status_code,
-            job_id,
-            request_id,
-        )
+        log.error("parse endpoint returned HTTP %s", exc.response.status_code)
         return {
             "fatal_error": f"JD parse failed: HTTP {exc.response.status_code}",
             "steps_taken": state["steps_taken"] + ["parse_jd"],
         }
     except httpx.RequestError as exc:
-        logger.error(
-            "parse_jd: request error job_id=%s request_id=%s error=%s",
-            job_id,
-            request_id,
-            exc,
-        )
+        log.error("request error: %s", exc)
         return {
             "fatal_error": f"JD parse failed: {exc}",
             "steps_taken": state["steps_taken"] + ["parse_jd"],
@@ -68,11 +50,7 @@ async def parse_jd(state: AgentState) -> dict:
         "parsed_at": datetime.now(timezone.utc).isoformat(),
     }
 
-    logger.info(
-        "parse_jd: parse complete job_id=%s request_id=%s",
-        job_id,
-        request_id,
-    )
+    log.info("parse complete")
 
     return {
         "parsed_jd": parsed_jd,

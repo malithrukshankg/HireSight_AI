@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 
 from app.graph.matching_schema import NormalizedCV, NormalizedJD
+from app.graph.node_logger import get_node_logger
 from app.graph.state import AgentState
 
 logger = logging.getLogger(__name__)
@@ -81,22 +82,14 @@ def _normalize_cv(parsed: dict) -> dict:
 
 
 async def normalize_inputs(state: AgentState) -> dict:
-    job_id = state["job_id"]
-    cv_id = state["cv_id"]
-    request_id = state["request_id"]
+    log = get_node_logger(logger, state, "normalize_inputs")
 
     parsed_jd = state.get("parsed_jd")
     parsed_cv = state.get("parsed_cv")
 
     if parsed_jd is None or parsed_cv is None:
         missing = "parsed_jd" if parsed_jd is None else "parsed_cv"
-        logger.error(
-            "normalize_inputs: %s is None job_id=%s cv_id=%s request_id=%s",
-            missing,
-            job_id,
-            cv_id,
-            request_id,
-        )
+        log.error("%s is missing from state", missing)
         return {
             "fatal_error": f"normalize_inputs: {missing} is missing",
             "steps_taken": state["steps_taken"] + ["normalize_inputs"],
@@ -105,13 +98,10 @@ async def normalize_inputs(state: AgentState) -> dict:
     normalized_jd = _normalize_jd(parsed_jd)
     normalized_cv = _normalize_cv(parsed_cv)
 
-    logger.info(
-        "normalize_inputs: jd_skills=%d cv_skills=%d job_id=%s cv_id=%s request_id=%s",
+    log.info(
+        "normalised jd_skills=%d cv_skills=%d",
         len(normalized_jd.get("all_skills", [])),
         len(normalized_cv.get("skills", [])),
-        job_id,
-        cv_id,
-        request_id,
     )
 
     return {
