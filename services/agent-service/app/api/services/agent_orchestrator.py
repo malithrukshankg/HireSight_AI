@@ -5,7 +5,7 @@ import uuid
 from datetime import datetime, timezone
 
 from app.api.schemas.agent_schema import JDScoreRequest, JDScoreResponse
-from app.graph.jd_cv_matching_graph import compiled_graph
+import app.graph.jd_cv_matching_graph as _graph_module
 from app.graph.state import AgentState
 
 logger = logging.getLogger(__name__)
@@ -50,7 +50,7 @@ class AgentOrchestrator:
             request_id,
         )
 
-        final_state: AgentState = await compiled_graph.ainvoke(
+        final_state: AgentState = await _graph_module.compiled_graph.ainvoke(
             initial_state,
             config={"configurable": {"thread_id": request_id}},
         )
