@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import logging
+from typing import Any
 
-from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import END, START, StateGraph
 
 from app.graph.nodes.fetch_cv_context import fetch_cv_context
@@ -126,6 +126,11 @@ def build_graph() -> StateGraph:
     return builder
 
 
-# Module-level compiled graph used by AgentOrchestrator.
-# MemorySaver is in-process and lost on restart -- suitable for Phase 2 development only.
-compiled_graph = build_graph().compile(checkpointer=MemorySaver())
+# Set at startup by main.py via set_compiled_graph().
+# None until the app lifespan initialises the AsyncPostgresSaver checkpointer.
+compiled_graph: Any = None
+
+
+def set_compiled_graph(graph: Any) -> None:
+    global compiled_graph
+    compiled_graph = graph
